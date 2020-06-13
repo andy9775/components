@@ -6,10 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, Output, Input, AfterContentInit, EventEmitter, Inject} from '@angular/core';
+import {Directive, Output, Input, AfterContentInit, EventEmitter} from '@angular/core';
 import {coerceBooleanProperty, BooleanInput} from '@angular/cdk/coercion';
 import {CdkMenuPanel} from './menu-panel';
 import {CdkMenuGroup} from './menu-group';
+import {MenuItem} from './menu-item-interface';
 
 /**
  * Directive which provides behavior for an element which when clicked:
@@ -35,9 +36,9 @@ import {CdkMenuGroup} from './menu-group';
     '[attr.aria-disabled]': 'disabled || null',
   },
 })
-export class CdkMenuItem implements AfterContentInit {
+export class CdkMenuItem implements AfterContentInit, MenuItem {
   /** Template reference variable to the menu this trigger opens */
-  @Input('cdkMenuTriggerFor') _menuPanel: CdkMenuPanel;
+  @Input('cdkMenuTriggerFor') _menuPanel?: CdkMenuPanel;
 
   /** ARIA role for the menu item. */
   @Input() role: 'menuitem' | 'menuitemradio' | 'menuitemcheckbox' = 'menuitem';
@@ -65,17 +66,9 @@ export class CdkMenuItem implements AfterContentInit {
   /** Emits when the attached submenu is opened */
   @Output() opened: EventEmitter<void> = new EventEmitter();
 
-  /** get the aria-checked value only if element is `menuitemradio` or `menuitemcheckbox` */
-  _getAriaChecked(): boolean | null {
-    if (this.role === 'menuitem') {
-      return null;
-    }
-    return this.checked;
-  }
-
   constructor(
-    /** reference to the parent CdkMenuGroup component */
-    @Inject(CdkMenuGroup) private _menuGroup: CdkMenuGroup
+    /** reference a parent CdkMenuGroup component */
+    private readonly _menuGroup: CdkMenuGroup
   ) {}
 
   /** Configure event subscriptions */
@@ -96,14 +89,21 @@ export class CdkMenuItem implements AfterContentInit {
 
     if (this.hasSubmenu()) {
       // TODO(andy): open the menu
-    } else if (this.role !== 'menuitem') {
-      this._menuGroup.change.next(this);
     }
+    this._menuGroup._registerTriggeredItem(this);
   }
 
   /** Whether the menu item opens a menu */
   hasSubmenu() {
     return !!this._menuPanel;
+  }
+
+  /** get the aria-checked value only if element is `menuitemradio` or `menuitemcheckbox` */
+  _getAriaChecked(): boolean | null {
+    if (this.role === 'menuitem') {
+      return null;
+    }
+    return this.checked;
   }
 
   /**
