@@ -6,11 +6,30 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, Output, Input, AfterContentInit, EventEmitter} from '@angular/core';
+import {
+  Directive,
+  Output,
+  Input,
+  AfterContentInit,
+  EventEmitter,
+  ElementRef,
+  Inject,
+  ViewContainerRef,
+  OnDestroy,
+} from '@angular/core';
 import {coerceBooleanProperty, BooleanInput} from '@angular/cdk/coercion';
 import {CdkMenuPanel} from './menu-panel';
 import {CdkMenuGroup} from './menu-group';
+import {
+  Overlay,
+  OverlayRef,
+  FlexibleConnectedPositionStrategy,
+  ConnectedPosition,
+} from '@angular/cdk/overlay';
+import {TemplatePortal} from '@angular/cdk/portal';
+import {takeUntil} from 'rxjs/operators';
 import {MenuItem} from './menu-item-interface';
+import {Menu, MENU_INJECTION_KEY} from './menu-interface';
 
 /**
  * Directive which provides behavior for an element which when clicked:
@@ -31,12 +50,13 @@ import {MenuItem} from './menu-item-interface';
   exportAs: 'cdkMenuItem',
   host: {
     'type': 'button',
+    '(click)': 'trigger()', // TODO remove me
     '[attr.role]': 'role',
     '[attr.aria-checked]': '_getAriaChecked()',
     '[attr.aria-disabled]': 'disabled || null',
   },
 })
-export class CdkMenuItem implements AfterContentInit, MenuItem {
+export class CdkMenuItem implements AfterContentInit, OnDestroy, MenuItem {
   /** Template reference variable to the menu this trigger opens */
   @Input('cdkMenuTriggerFor') _menuPanel?: CdkMenuPanel;
 
@@ -66,15 +86,32 @@ export class CdkMenuItem implements AfterContentInit, MenuItem {
   /** Emits when the attached submenu is opened */
   @Output() opened: EventEmitter<void> = new EventEmitter();
 
-  constructor(
-    /** reference a parent CdkMenuGroup component */
-    private readonly _menuGroup: CdkMenuGroup
-  ) {}
+  /** A reference to the overlay which manages the submenu */
+  private _overlayReference: OverlayRef | null = null;
 
-  /** Configure event subscriptions */
+  /** Emits when the menu item is destroyed */
+  private readonly _destroyed: EventEmitter<void> = new EventEmitter();
+
+  constructor(
+    private readonly _element: ElementRef<HTMLElement>,
+    protected readonly _viewContainer: ViewContainerRef,
+    private readonly _overlay: Overlay,
+    /** reference to the parent CdkMenuGroup component */
+    private readonly _menuGroup: CdkMenuGroup,
+    /** reference to the closest parent Menu/MenuBar */
+    @Inject(MENU_INJECTION_KEY) private readonly _parent: Menu
+  ) {
+    if (_parent.closed) {
+      // if the parent menu is closed we need to close the submenu that this MenuItem opened
+      _parent.closed.pipe(takeUntil(this._destroyed)).subscribe(() => this._closeSubmenu());
+    }
+  }
+
   ngAfterContentInit() {
     if (this.role !== 'menuitem') {
-      this._menuGroup.change.subscribe((button: CdkMenuItem) => this._toggleCheckedState(button));
+      this._menuGroup.change
+        .pipe(takeUntil(this._destroyed))
+        .subscribe((button: MenuItem) => this._toggleCheckedState(button));
     }
   }
 
@@ -88,14 +125,20 @@ export class CdkMenuItem implements AfterContentInit, MenuItem {
     }
 
     if (this.hasSubmenu()) {
-      // TODO(andy): open the menu
+      this.isSubmenuOpen() ? this._closeSubmenu() : this._openSubmenu();
     }
+
     this._menuGroup._registerTriggeredItem(this);
   }
 
   /** Whether the menu item opens a menu */
   hasSubmenu() {
     return !!this._menuPanel;
+  }
+
+  /** Whether the submenu this button is a trigger for is open */
+  isSubmenuOpen() {
+    return !!this._overlayReference;
   }
 
   /** get the aria-checked value only if element is `menuitemradio` or `menuitemcheckbox` */
@@ -106,10 +149,64 @@ export class CdkMenuItem implements AfterContentInit, MenuItem {
     return this.checked;
   }
 
+  ngOnDestroy() {
+    this._closeSubmenu();
+    this._destroyed.next();
+    this._destroyed.complete();
+  }
+
+  /** Close the opened submenu */
+  private _closeSubmenu() {
+    if (this._overlayReference) {
+      this._overlayReference.detach();
+      this._overlayReference = null;
+    }
+  }
+
+  /** Open the attached submenu */
+  private _openSubmenu() {
+    this._overlayReference = this._overlay.create({
+      positionStrategy: this._getOverlayPositionStrategy(),
+    });
+
+    this._overlayReference.attach(
+      new TemplatePortal(this._menuPanel!._template, this._viewContainer)
+    );
+  }
+
+  /** Build the position strategy for the overlay which specifies where to place the submenu */
+  private _getOverlayPositionStrategy(): FlexibleConnectedPositionStrategy {
+    return this._overlay
+      .position()
+      .flexibleConnectedTo(this._element)
+      .setOrigin(this._element)
+      .withPositions(this._getOverlayPositions())
+      .withLockedPosition();
+  }
+
+  /** Determine where to position the submenu  */
+  private _getOverlayPositions(): ConnectedPosition[] {
+    return [
+      this._parent.orientation === 'horizontal'
+        ? {
+            originX: 'start',
+            originY: 'bottom',
+            overlayX: 'start',
+            overlayY: 'top',
+          }
+        : {
+            originX: 'end',
+            originY: 'top',
+            overlayX: 'start',
+            overlayY: 'top',
+          },
+    ];
+  }
+
   /**
    * Toggle the checked state of the menuitemradio or menuitemcheckbox component
    */
-  private _toggleCheckedState(selected: CdkMenuItem) {
+  private _toggleCheckedState(selected: MenuItem) {
     if (this.role === 'menuitemradio') {
       this.checked = selected === this;
     } else if (this.role === 'menuitemcheckbox' && selected === this) {

@@ -11,6 +11,7 @@ ng_module(
     module_name = "@angular/cdk-experimental/menu",
     deps = [
         "//src/cdk/coercion",
+        "//src/cdk/overlay",
         "@npm//@angular/core",
         "@npm//rxjs",
     ],

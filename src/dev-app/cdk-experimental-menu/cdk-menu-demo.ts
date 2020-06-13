@@ -12,4 +12,7 @@ import {Component} from '@angular/core';
   templateUrl: 'cdk-menu-demo.html',
   styleUrls: ['cdk-menu-demo.css'],
 })
-export class CdkMenuDemo {}
+export class CdkMenuDemo {
+  // TODO undo changes to the demo-app
+  private _handler() {}
+}

@@ -1,11 +1,24 @@
-<ul cdkMenuBar class="example-menu-bar">
+<style>
+  [cdkMenuBar] {
+    display: flex;
+    flex-direction: column;
+  }
+  [cdkMenu] {
+    list-style: none;
+    margin: 0;
+    padding: 3;
+    background-color: antiquewhite;
+  }
+</style>
+
+<ul cdkMenuBar cdkMenuBarOrientation="vertical" class="example-menu-bar">
   <li role="none"><button id="file_button" [cdkMenuTriggerFor]="file">File</button></li>
   <li role="none"><button id="edit_button" [cdkMenuTriggerFor]="edit">Edit</button></li>
 </ul>
 
 <ng-template cdkMenuPanel #file="cdkMenuPanel">
   <ul cdkMenu id="file_menu">
-    <li role="none"><button id="share_button" cdkMenuItem>Share</button></li>
+    <li role="none"><button id="share_button" [cdkMenuTriggerFor]="share">Share</button></li>
     <li role="none"><button id="open_button" cdkMenuItem>Open</button></li>
     <li role="none"><button id="rename_button" cdkMenuItem>Rename</button></li>
     <li role="none"><button id="print_button" cdkMenuItem>Print</button></li>
@@ -19,5 +32,12 @@
     <li role="none"><button id="cut_button" cdkMenuItem>Cut</button></li>
     <li role="none"><button id="copy_button" cdkMenuItem>Copy</button></li>
     <li role="none"><button id="paste_button" cdkMenuItem>Paste</button></li>
+  </ul>
+</ng-template>
+
+<ng-template cdkMenuPanel #share="cdkMenuPanel">
+  <ul cdkMenu id="share_menu">
+    <li role="none"><button id="undo_button" cdkMenuItem>First</button></li>
+    <li role="none"><button id="redo_button" cdkMenuItem>Second</button></li>
   </ul>
 </ng-template>

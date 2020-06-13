@@ -12,9 +12,11 @@ import {CdkMenuBar} from './menu-bar';
 import {CdkMenuPanel} from './menu-panel';
 import {CdkMenuItem} from './menu-item';
 import {CdkMenuGroup} from './menu-group';
+import {OverlayModule} from '@angular/cdk/overlay';
 
 const EXPORTED_DECLARATIONS = [CdkMenuBar, CdkMenu, CdkMenuPanel, CdkMenuItem, CdkMenuGroup];
 @NgModule({
+  imports: [OverlayModule],
   exports: EXPORTED_DECLARATIONS,
   declarations: EXPORTED_DECLARATIONS,
 })
