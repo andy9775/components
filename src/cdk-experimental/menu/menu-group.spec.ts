@@ -1,15 +1,16 @@
 import {Component} from '@angular/core';
 import {ComponentFixture, TestBed, async} from '@angular/core/testing';
+import {By} from '@angular/platform-browser';
 import {CdkMenuModule} from './menu-module';
 import {CdkMenuGroup} from './menu-group';
-import {CdkMenuItem} from './menu-item';
 import {CdkMenu} from './menu';
-import {By} from '@angular/platform-browser';
+import {CdkMenuItemCheckbox} from './menu-item-checkbox';
+import {CdkMenuItemRadio} from './menu-item-radio';
 
 describe('MenuGroup', () => {
   describe('with MenuItems as checkbox', () => {
     let fixture: ComponentFixture<CheckboxMenu>;
-    let menuItems: CdkMenuItem[];
+    let menuItems: CdkMenuItemCheckbox[];
 
     beforeEach(async(() => {
       TestBed.configureTestingModule({
@@ -21,8 +22,8 @@ describe('MenuGroup', () => {
       fixture.detectChanges();
 
       menuItems = fixture.debugElement
-        .queryAll(By.directive(CdkMenuItem))
-        .map(e => e.injector.get(CdkMenuItem));
+        .queryAll(By.directive(CdkMenuItemCheckbox))
+        .map(e => e.injector.get(CdkMenuItemCheckbox));
     }));
 
     it('should not change state of sibling checked menuitemcheckbox', () => {
@@ -34,7 +35,7 @@ describe('MenuGroup', () => {
 
   describe('with MenuItems as radio button', () => {
     let fixture: ComponentFixture<MenuWithMultipleRadioGroups>;
-    let menuItems: CdkMenuItem[];
+    let menuItems: CdkMenuItemRadio[];
 
     beforeEach(async(() => {
       TestBed.configureTestingModule({
@@ -46,8 +47,8 @@ describe('MenuGroup', () => {
       fixture.detectChanges();
 
       menuItems = fixture.debugElement
-        .queryAll(By.directive(CdkMenuItem))
-        .map(e => e.injector.get(CdkMenuItem));
+        .queryAll(By.directive(CdkMenuItemRadio))
+        .map(e => e.injector.get(CdkMenuItemRadio));
     }));
 
     it('should change state of sibling menuitemradio in same group', () => {
@@ -77,7 +78,7 @@ describe('MenuGroup', () => {
   describe('change events', () => {
     let fixture: ComponentFixture<MenuWithMenuItemsAndRadioGroups>;
     let menu: CdkMenu;
-    let menuItems: CdkMenuItem[];
+    let menuItems: CdkMenuItemRadio[];
 
     beforeEach(async(() => {
       TestBed.configureTestingModule({
@@ -91,14 +92,14 @@ describe('MenuGroup', () => {
       menu = fixture.debugElement.query(By.directive(CdkMenu)).injector.get(CdkMenu);
 
       menuItems = fixture.debugElement
-        .queryAll(By.directive(CdkMenuItem))
-        .map(element => element.injector.get(CdkMenuItem));
+        .queryAll(By.directive(CdkMenuItemRadio))
+        .map(element => element.injector.get(CdkMenuItemRadio));
     }));
 
     it('should not emit from root menu with nested groups', () => {
       const spy = jasmine.createSpy('changeSpy for root menu');
       menu.change.subscribe(spy);
-
+      fixture.detectChanges();
       menuItems.forEach(menuItem => menuItem.trigger());
 
       expect(spy).toHaveBeenCalledTimes(0);
@@ -134,20 +135,6 @@ describe('MenuGroup', () => {
 
       expect(spy).toHaveBeenCalledTimes(0);
     });
-
-    it('should not emit on menuitem click', () => {
-      const spies: jasmine.Spy[] = [];
-
-      fixture.debugElement.queryAll(By.directive(CdkMenuGroup)).forEach((group, index) => {
-        const spy = jasmine.createSpy(`cdkMenuGroup ${index} change spy`);
-        spies.push(spy);
-        group.injector.get(CdkMenuGroup).change.subscribe(spy);
-      });
-
-      menuItems[2].trigger();
-
-      spies.forEach(spy => expect(spy).toHaveBeenCalledTimes(0));
-    });
   });
 });
 
@@ -157,12 +144,12 @@ describe('MenuGroup', () => {
       <li role="none">
         <ul cdkMenuGroup>
           <li #first role="none">
-            <button checked="true" role="menuitemcheckbox" cdkMenuItem>
+            <button checked="true" cdkMenuItemCheckbox>
               one
             </button>
           </li>
           <li role="none">
-            <button role="menuitemcheckbox" cdkMenuItem>
+            <button cdkMenuItemCheckbox>
               two
             </button>
           </li>
@@ -179,12 +166,12 @@ class CheckboxMenu {}
       <li role="none">
         <ul cdkMenuGroup>
           <li role="none">
-            <button checked="true" role="menuitemradio" cdkMenuItem>
+            <button checked="true" cdkMenuItemRadio>
               one
             </button>
           </li>
           <li role="none">
-            <button role="menuitemradio" cdkMenuItem>
+            <button cdkMenuItemRadio>
               two
             </button>
           </li>
@@ -193,12 +180,12 @@ class CheckboxMenu {}
       <li role="none">
         <ul cdkMenuGroup>
           <li role="none">
-            <button role="menuitemradio" cdkMenuItem>
+            <button cdkMenuItemRadio>
               three
             </button>
           </li>
           <li role="none">
-            <button role="menuitemradio" cdkMenuItem>
+            <button cdkMenuItemRadio>
               four
             </button>
           </li>
@@ -215,7 +202,7 @@ class MenuWithMultipleRadioGroups {}
       <li role="none">
         <ul cdkMenuGroup>
           <li role="none">
-            <button role="menuitemradio" cdkMenuItem>
+            <button cdkMenuItemRadio>
               one
             </button>
           </li>
@@ -224,7 +211,7 @@ class MenuWithMultipleRadioGroups {}
       <li role="none">
         <ul cdkMenuGroup>
           <li role="none">
-            <button role="menuitemradio" cdkMenuItem>
+            <button cdkMenuItemRadio>
               two
             </button>
           </li>

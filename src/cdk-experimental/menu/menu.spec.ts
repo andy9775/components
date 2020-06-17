@@ -1,14 +1,14 @@
 import {ComponentFixture, TestBed, async} from '@angular/core/testing';
 import {Component} from '@angular/core';
+import {By} from '@angular/platform-browser';
 import {CdkMenu} from './menu';
 import {CdkMenuModule} from './menu-module';
-import {CdkMenuItem} from './menu-item';
-import {By} from '@angular/platform-browser';
+import {CdkMenuItemCheckbox} from './menu-item-checkbox';
 
 describe('Menu', () => {
   describe('as checkbox group', () => {
     let fixture: ComponentFixture<MenuCheckboxGroup>;
-    let menuItems: CdkMenuItem[];
+    let menuItems: CdkMenuItemCheckbox[];
 
     beforeEach(async(() => {
       TestBed.configureTestingModule({
@@ -21,8 +21,8 @@ describe('Menu', () => {
       fixture.detectChanges();
 
       menuItems = fixture.debugElement
-        .queryAll(By.directive(CdkMenuItem))
-        .map(element => element.injector.get(CdkMenuItem));
+        .queryAll(By.directive(CdkMenuItemCheckbox))
+        .map(element => element.injector.get(CdkMenuItemCheckbox));
     }));
 
     it('should toggle menuitemcheckbox', () => {
@@ -41,7 +41,7 @@ describe('Menu', () => {
 
   describe('checkbox change events', () => {
     let fixture: ComponentFixture<MenuCheckboxGroup>;
-    let menuItems: CdkMenuItem[];
+    let menuItems: CdkMenuItemCheckbox[];
 
     beforeEach(async(() => {
       TestBed.configureTestingModule({
@@ -54,8 +54,8 @@ describe('Menu', () => {
       fixture.detectChanges();
 
       menuItems = fixture.debugElement
-        .queryAll(By.directive(CdkMenuItem))
-        .map(element => element.injector.get(CdkMenuItem));
+        .queryAll(By.directive(CdkMenuItemCheckbox))
+        .map(element => element.injector.get(CdkMenuItemCheckbox));
     }));
 
     it('should emit on click', () => {
@@ -74,12 +74,12 @@ describe('Menu', () => {
   template: `
     <ul cdkMenu>
       <li role="none">
-        <button checked="true" role="menuitemcheckbox" cdkMenuItem>
+        <button checked="true" cdkMenuItemCheckbox>
           first
         </button>
       </li>
       <li role="none">
-        <button role="menuitemcheckbox" cdkMenuItem>
+        <button cdkMenuItemCheckbox>
           second
         </button>
       </li>
