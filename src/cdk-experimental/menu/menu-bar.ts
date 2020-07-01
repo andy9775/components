@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, Input} from '@angular/core';
+import {Directive, Input, ElementRef} from '@angular/core';
 import {CdkMenuGroup} from './menu-group';
 import {CDK_MENU, Menu} from './menu-interface';
 
@@ -34,4 +34,13 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu {
    * Does not affect styling/layout.
    */
   @Input('cdkMenuBarOrientation') orientation: 'horizontal' | 'vertical' = 'horizontal';
+
+  /** The HTML Elements which make up the open menu tree. */
+  _openMenuElements: HTMLElement[] = [];
+
+  constructor(readonly _elementRef: ElementRef<HTMLElement>) {
+    super();
+
+    this._openMenuElements.push(_elementRef.nativeElement);
+  }
 }

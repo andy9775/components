@@ -28,6 +28,12 @@ import {
 import {CdkMenuPanel} from './menu-panel';
 import {Menu, CDK_MENU} from './menu-interface';
 
+/** Types of actions which may cause a menu to open */
+export type OpenEventCause = void | 'hover' | 'keydown' | 'click';
+
+/** Types of actions which may cause a menu to close */
+export type CloseEventCause = OpenEventCause | 'tab' | 'escape';
+
 /**
  * A directive to be combined with CdkMenuItem which opens the Menu it is bound to. If the
  * element is in a top level MenuBar it will open the menu on click, or if a sibling is already
@@ -50,10 +56,10 @@ export class CdkMenuItemTrigger implements OnDestroy {
   @Input('cdkMenuTriggerFor') _menuPanel?: CdkMenuPanel;
 
   /** Emits when the attached menu is requested to open */
-  @Output('cdkMenuOpened') readonly opened: EventEmitter<void> = new EventEmitter();
+  @Output('cdkMenuOpened') readonly opened: EventEmitter<OpenEventCause> = new EventEmitter();
 
   /** Emits when the attached menu is requested to close */
-  @Output('cdkMenuClosed') readonly closed: EventEmitter<void> = new EventEmitter();
+  @Output('cdkMenuClosed') readonly closed: EventEmitter<CloseEventCause> = new EventEmitter();
 
   /** A reference to the overlay which manages the triggered menu */
   private _overlayRef: OverlayRef | null = null;
@@ -92,6 +98,24 @@ export class CdkMenuItemTrigger implements OnDestroy {
 
     this._overlayRef = this._overlay.create(this._getOverlayConfig());
     this._overlayRef.attach(this._getPortal());
+
+    this._configureMenu();
+    this._subscribeToClosingActions();
+  }
+
+  /** Wire up the subscription which can cause the menu to close. */
+  private _subscribeToClosingActions() {
+    if (this._overlayRef) {
+      this._overlayRef.outsidePointerEvents().subscribe(() => this.isMenuOpen() && this.toggle());
+    }
+  }
+
+  /** Set the elements array on the open menu and push the open menu to the array. */
+  private _configureMenu() {
+    if (this._menuPanel && this._menuPanel._menu) {
+      this._menuPanel._menu._openMenuElements = this._parentMenu._openMenuElements;
+      this._parentMenu._openMenuElements.push(this._menuPanel._menu._elementRef.nativeElement);
+    }
   }
 
   /** Close the opened menu */
@@ -109,6 +133,7 @@ export class CdkMenuItemTrigger implements OnDestroy {
       positionStrategy: this._getOverlayPositionStrategy(),
       scrollStrategy: this._overlay.scrollStrategies.block(),
       direction: this._directionality,
+      excludeFromOutsideClick: this._parentMenu._openMenuElements,
     });
   }
 

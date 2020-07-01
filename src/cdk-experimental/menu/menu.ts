@@ -16,6 +16,7 @@ import {
   AfterContentInit,
   OnDestroy,
   Optional,
+  ElementRef,
 } from '@angular/core';
 import {take} from 'rxjs/operators';
 import {CdkMenuGroup} from './menu-group';
@@ -56,6 +57,9 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnD
   @ContentChildren(CdkMenuGroup, {descendants: true})
   private readonly _nestedGroups: QueryList<CdkMenuGroup>;
 
+  /** The HTML Elements which make up the open menu tree. */
+  _openMenuElements: HTMLElement[];
+
   /**
    * A reference to the enclosing parent menu panel.
    *
@@ -65,7 +69,10 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnD
    */
   @Input('cdkMenuPanel') private readonly _explicitPanel?: CdkMenuPanel;
 
-  constructor(@Optional() private readonly _menuPanel?: CdkMenuPanel) {
+  constructor(
+    readonly _elementRef: ElementRef<HTMLElement>,
+    @Optional() private readonly _menuPanel?: CdkMenuPanel
+  ) {
     super();
   }
 

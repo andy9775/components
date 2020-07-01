@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {InjectionToken} from '@angular/core';
+import {InjectionToken, ElementRef} from '@angular/core';
 
 /** Injection token used to return classes implementing the Menu interface */
 export const CDK_MENU = new InjectionToken<Menu>('cdk-menu');
@@ -15,4 +15,10 @@ export const CDK_MENU = new InjectionToken<Menu>('cdk-menu');
 export interface Menu {
   /** The orientation of the menu */
   orientation: 'horizontal' | 'vertical';
+
+  /** The HTML Elements which make up the open menu tree. */
+  _openMenuElements: HTMLElement[];
+
+  /** A reference to the element the directive is on. */
+  _elementRef: ElementRef<HTMLElement>;
 }
