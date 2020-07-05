@@ -6,8 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, Input, Optional, Self} from '@angular/core';
+import {Directive, Input, Optional, Self, ElementRef, Output, EventEmitter} from '@angular/core';
 import {coerceBooleanProperty, BooleanInput} from '@angular/cdk/coercion';
+import {FocusableOption} from '@angular/cdk/a11y';
 import {CdkMenuItemTrigger} from './menu-item-trigger';
 
 /**
@@ -24,7 +25,7 @@ import {CdkMenuItemTrigger} from './menu-item-trigger';
     '[attr.aria-disabled]': 'disabled || null',
   },
 })
-export class CdkMenuItem {
+export class CdkMenuItem implements FocusableOption {
   /**  Whether the CdkMenuItem is disabled - defaults to false */
   @Input()
   get disabled(): boolean {
@@ -35,21 +36,60 @@ export class CdkMenuItem {
   }
   private _disabled = false;
 
+  /**
+   * If this MenuItem is a regular MenuItem, outputs when it is triggered by a keyboard or mouse
+   * event.
+   */
+  @Output('cdkMenuItemOnTrigger') _trigger: EventEmitter<void> = new EventEmitter();
+
   constructor(
+    private readonly _elementRef: ElementRef<HTMLElement>,
     /** Reference to the CdkMenuItemTrigger directive if one is added to the same element */
     @Self() @Optional() private readonly _menuTrigger?: CdkMenuItemTrigger
   ) {}
 
-  /** Open the menu if one is attached */
+  /** Place focus on the element. */
+  focus() {
+    this._elementRef.nativeElement.focus();
+  }
+
+  /** If not disabled, toggle the menu if one is attached otherwise emits the OnTrigger event. */
   trigger() {
-    if (!this.disabled && this.hasMenu()) {
+    if (this.disabled) {
+      return;
+    }
+
+    if (this.hasMenu()) {
       this._menuTrigger!.toggle();
+    } else {
+      this._trigger.next();
     }
   }
 
   /** Whether the menu item opens a menu. */
   hasMenu() {
     return !!this._menuTrigger && this._menuTrigger.hasMenu();
+  }
+
+  /** Return true if this MenuItem has an attached menu and it is open. */
+  isMenuOpen() {
+    return this.hasMenu() && this._menuTrigger!.isMenuOpen();
+  }
+
+  /** Get a reference to the Menu rendered in the DOM if the Menu is open and it is visible. */
+  getRenderedMenu() {
+    return this.isMenuOpen() ? this._menuTrigger!.getRenderedMenu()! : null;
+  }
+
+  /** Get the MenuItemTrigger associated with this element. */
+  getMenuTrigger() {
+    return this._menuTrigger;
+  }
+
+  /** Get the label for this element which is required by the FocusableOption interface. */
+  getLabel(): string {
+    // TODO(andy): implement a more robust algorithm for determining nested text
+    return this._elementRef.nativeElement.innerText;
   }
 
   static ngAcceptInputType_disabled: BooleanInput;

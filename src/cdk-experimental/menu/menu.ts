@@ -16,12 +16,17 @@ import {
   AfterContentInit,
   OnDestroy,
   Optional,
+  Inject,
 } from '@angular/core';
+import {Directionality} from '@angular/cdk/bidi';
+import {Subject} from 'rxjs';
 import {take} from 'rxjs/operators';
 import {CdkMenuGroup} from './menu-group';
 import {CdkMenuPanel} from './menu-panel';
 import {Menu, CDK_MENU} from './menu-interface';
 import {throwMissingMenuPanelError} from './menu-errors';
+import {CdkMenuItem} from './menu-item';
+import {MenuKeyManager, TYPE_AHEAD_DEBOUNCE} from './menu-key-manager';
 
 /**
  * Directive which configures the element as a Menu which should contain child elements marked as
@@ -34,6 +39,7 @@ import {throwMissingMenuPanelError} from './menu-errors';
   selector: '[cdkMenu]',
   exportAs: 'cdkMenu',
   host: {
+    '(keydown)': '_handleKeyEvent($event)',
     'role': 'menu',
     '[attr.aria-orientation]': 'orientation',
   },
@@ -52,9 +58,16 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnD
   /** Event emitted when the menu is closed. */
   @Output() readonly closed: EventEmitter<void | 'click' | 'tab' | 'escape'> = new EventEmitter();
 
+  /** Handles keyboard events for the menu. */
+  private _menuKeyManager?: MenuKeyManager;
+
   /** List of nested CdkMenuGroup elements */
   @ContentChildren(CdkMenuGroup, {descendants: true})
   private readonly _nestedGroups: QueryList<CdkMenuGroup>;
+
+  /** All child MenuItem elements nested in this Menu. */
+  @ContentChildren(CdkMenuItem, {descendants: true})
+  private readonly _allItems: QueryList<CdkMenuItem>;
 
   /**
    * A reference to the enclosing parent menu panel.
@@ -65,7 +78,11 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnD
    */
   @Input('cdkMenuPanel') private readonly _explicitPanel?: CdkMenuPanel;
 
-  constructor(@Optional() private readonly _menuPanel?: CdkMenuPanel) {
+  constructor(
+    private readonly _dir: Directionality,
+    @Inject(TYPE_AHEAD_DEBOUNCE) private readonly _debounceInterval: number,
+    @Optional() private readonly _menuPanel?: CdkMenuPanel
+  ) {
     super();
   }
 
@@ -74,6 +91,52 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnD
 
     this._completeChangeEmitter();
     this._registerWithParentPanel();
+
+    this._menuKeyManager = new MenuKeyManager(
+      this._allItems,
+      this._dir,
+      this.orientation,
+      this._debounceInterval
+    );
+  }
+
+  /** Place focus on the first MenuItem in the menu. */
+  focusFirstItem() {
+    if (this._menuKeyManager) {
+      this._menuKeyManager.focusFirstItem();
+    }
+  }
+
+  /** Place focus on the last MenuItem in the menu. */
+  focusLastItem() {
+    if (this._menuKeyManager) {
+      this._menuKeyManager.focusLastItem();
+    }
+  }
+
+  /**
+   * Place focus on the given MenuItem in the menu.
+   * @param child the MenuItem to place focus on
+   */
+  focusItem(child: CdkMenuItem) {
+    if (this._menuKeyManager) {
+      this._menuKeyManager.focusItem(child);
+    }
+  }
+
+  /** Get an emitter which emits bubbled-up keyboard events from the keyboard manager. */
+  _getBubbledKeyboardEvents(): Subject<KeyboardEvent> | null {
+    if (this._menuKeyManager) {
+      return this._menuKeyManager._bubbledEvents;
+    }
+    return null;
+  }
+
+  /** Direct the MenuKeyManager to handle the keyboard event. */
+  _handleKeyEvent(event: KeyboardEvent) {
+    if (this._menuKeyManager) {
+      this._menuKeyManager.onKeydown(event);
+    }
   }
 
   /** Register this menu with its enclosing parent menu panel */
@@ -117,6 +180,8 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnD
 
   ngOnDestroy() {
     this._emitClosedEvent();
+
+    this._menuKeyManager!.destroy();
   }
 
   /** Emit and complete the closed event emitter */
