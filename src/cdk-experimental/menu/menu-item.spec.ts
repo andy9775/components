@@ -1,4 +1,4 @@
-import {Component} from '@angular/core';
+import {Component, Type} from '@angular/core';
 import {ComponentFixture, TestBed, async} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {CdkMenuModule} from './menu-module';
@@ -58,25 +58,49 @@ describe('MenuItem', () => {
   });
 
   describe('with complex inner elements', () => {
-    let fixture: ComponentFixture<ComplexMenuItem>;
     let menuItem: CdkMenuItem;
 
-    beforeEach(async(() => {
+    /**
+     * Build a component for test and render it.
+     * @param componentClass the component to create
+     */
+    function createComponent<T>(componentClass: Type<T>) {
+      let fixture: ComponentFixture<T>;
+
       TestBed.configureTestingModule({
         imports: [CdkMenuModule],
-        declarations: [ComplexMenuItem],
+        declarations: [componentClass, MatIcon],
       }).compileComponents();
-    }));
 
-    beforeEach(() => {
-      fixture = TestBed.createComponent(ComplexMenuItem);
+      fixture = TestBed.createComponent(componentClass);
       fixture.detectChanges();
 
       menuItem = fixture.debugElement.query(By.directive(CdkMenuItem)).injector.get(CdkMenuItem);
+    }
+
+    it('should get the text for a simple menu item', () => {
+      createComponent(SingleMenuItem);
+      expect(menuItem.getLabel()).toEqual('Click me!');
     });
 
-    it('should be able to extract the label text, with text nested in bold tag', () => {
-      expect(menuItem.getLabel()).toBe('Click me!');
+    it('should get the text for menu item with mat icon component', () => {
+      createComponent(MenuItemWithIcon);
+      expect(menuItem.getLabel()).toEqual('Click me!');
+    });
+
+    it('should get the text for menu item with mat icon class', () => {
+      createComponent(MenuItemWithIconClass);
+      expect(menuItem.getLabel()).toEqual('Click me!');
+    });
+
+    it('should get the text for a menu item with nested element', () => {
+      createComponent(MenuItemWithBoldElement);
+      expect(menuItem.getLabel()).toEqual('Click me!');
+    });
+
+    it('should get the text for a menu item with nested icon and nested elements', () => {
+      createComponent(MenuItemWithMultipleNestings);
+      expect(menuItem.getLabel()).toEqual('Click me!');
     });
   });
 });
@@ -87,6 +111,46 @@ describe('MenuItem', () => {
 class SingleMenuItem {}
 
 @Component({
-  template: ` <button cdkMenuItem>Click <b>me!</b></button> `,
+  template: `
+    <button cdkMenuItem>
+      <mat-icon>unicorn</mat-icon>
+      Click me!
+    </button>
+  `,
 })
-class ComplexMenuItem {}
+class MenuItemWithIcon {}
+@Component({
+  template: `
+    <button cdkMenuItem>
+      <div class="mat-icon">unicorn</div>
+      Click me!
+    </button>
+  `,
+})
+class MenuItemWithIconClass {}
+
+@Component({
+  template: ` <button cdkMenuItem><b>Click</b> me!</button> `,
+})
+class MenuItemWithBoldElement {}
+
+@Component({
+  template: `
+    <button cdkMenuItem>
+      <div>
+        <div>
+          Click
+        </div>
+        <mat-icon>menu</mat-icon>
+        <div>me<b>!</b></div>
+      </div>
+    </button>
+  `,
+})
+class MenuItemWithMultipleNestings {}
+
+@Component({
+  selector: 'mat-icon',
+  template: '<ng-content></ng-content>',
+})
+class MatIcon {}

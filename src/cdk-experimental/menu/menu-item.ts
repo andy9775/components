@@ -87,9 +87,29 @@ export class CdkMenuItem implements FocusableOption {
   }
 
   /** Get the label for this element which is required by the FocusableOption interface. */
-  getLabel(): string {
-    // TODO(andy): implement a more robust algorithm for determining nested text
-    return this._elementRef.nativeElement.innerText;
+  getLabel() {
+    // we know that the current node is an element type
+    const clone = this._elementRef.nativeElement.cloneNode(true) as Element;
+    this._removeIcons(clone);
+
+    return clone.textContent?.trim() || '';
+  }
+
+  /** Remove any child from the given element which can be identified as an icon. */
+  private _removeIcons(element: Element) {
+    for (let i = 0; i < element.children.length; i++) {
+      const childElement = element.children[i];
+      if (this._isIcon(childElement)) {
+        element.removeChild(childElement);
+      } else {
+        this._removeIcons(childElement);
+      }
+    }
+  }
+
+  /** Return true if the element is deemed to be an icon type. */
+  private _isIcon(element: Element) {
+    return element.nodeName === 'MAT-ICON' || element.className === 'mat-icon';
   }
 
   static ngAcceptInputType_disabled: BooleanInput;
