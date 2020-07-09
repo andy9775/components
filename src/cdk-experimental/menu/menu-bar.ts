@@ -14,6 +14,7 @@ import {
   AfterContentInit,
   OnDestroy,
   Inject,
+  Self,
 } from '@angular/core';
 import {Directionality} from '@angular/cdk/bidi';
 import {_getShadowRoot} from '@angular/cdk/platform';
@@ -22,6 +23,7 @@ import {CdkMenuGroup} from './menu-group';
 import {CDK_MENU, Menu} from './menu-interface';
 import {CdkMenuItem} from './menu-item';
 import {MenuKeyManager, TYPE_AHEAD_DEBOUNCE} from './menu-key-manager';
+import {MENU_STACK, MenuStack} from './menu-stack';
 
 /**
  * Directive applied to an element which configures it as a MenuBar by setting the appropriate
@@ -42,6 +44,7 @@ import {MenuKeyManager, TYPE_AHEAD_DEBOUNCE} from './menu-key-manager';
   providers: [
     {provide: CdkMenuGroup, useExisting: CdkMenuBar},
     {provide: CDK_MENU, useExisting: CdkMenuBar},
+    {provide: MENU_STACK, useClass: MenuStack},
   ],
 })
 export class CdkMenuBar extends CdkMenuGroup implements Menu, OnDestroy, AfterContentInit {
@@ -60,9 +63,11 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, OnDestroy, AfterCo
 
   constructor(
     private readonly _dir: Directionality,
-    @Inject(TYPE_AHEAD_DEBOUNCE) private readonly _debounceInterval: number
+    @Inject(TYPE_AHEAD_DEBOUNCE) private readonly _debounceInterval: number,
+    @Self() @Inject(MENU_STACK) stack: MenuStack
   ) {
     super();
+    console.log(stack.id);
   }
 
   ngAfterContentInit() {

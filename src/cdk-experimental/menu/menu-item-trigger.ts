@@ -27,6 +27,7 @@ import {
 } from '@angular/cdk/overlay';
 import {CdkMenuPanel} from './menu-panel';
 import {Menu, CDK_MENU} from './menu-interface';
+import {MENU_STACK, MenuStack} from './menu-stack';
 
 /**
  * A directive to be combined with CdkMenuItem which opens the Menu it is bound to. If the
@@ -41,6 +42,7 @@ import {Menu, CDK_MENU} from './menu-interface';
   selector: '[cdkMenuItem][cdkMenuTriggerFor]',
   exportAs: 'cdkMenuTriggerFor',
   host: {
+    '(click)': 'toggle()',
     'aria-haspopup': 'menu',
     '[attr.aria-expanded]': 'isMenuOpen()',
   },
@@ -66,8 +68,11 @@ export class CdkMenuItemTrigger implements OnDestroy {
     protected readonly _viewContainerRef: ViewContainerRef,
     private readonly _overlay: Overlay,
     private readonly _directionality: Directionality,
-    @Inject(CDK_MENU) private readonly _parentMenu: Menu
-  ) {}
+    @Inject(CDK_MENU) private readonly _parentMenu: Menu,
+    @Inject(MENU_STACK) private readonly _stack: MenuStack
+  ) {
+    console.log(_stack.id);
+  }
 
   /** Open/close the attached menu if the trigger has been configured with one */
   toggle() {
@@ -93,6 +98,9 @@ export class CdkMenuItemTrigger implements OnDestroy {
 
   /** Open the attached menu */
   private _openMenu() {
+    // do this somewhere better probably
+    MenuStack._mapping.set(this._menuPanel!, this._stack);
+
     this._overlayRef = this._overlay.create(this._getOverlayConfig());
     this._overlayRef.attach(this._getPortal());
 

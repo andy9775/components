@@ -27,6 +27,17 @@ import {Menu, CDK_MENU} from './menu-interface';
 import {throwMissingMenuPanelError} from './menu-errors';
 import {CdkMenuItem} from './menu-item';
 import {MenuKeyManager, TYPE_AHEAD_DEBOUNCE} from './menu-key-manager';
+import {MENU_STACK, MenuStack} from './menu-stack';
+
+export const menuStackFactory = (panel: CdkMenuPanel) => {
+  /*
+    Since this factory (and menu) exists below the MenuPanel we inject the MenuPanel and use it to 
+    fetch the associated MenuStack from the mapping. This way we avoid exposing the stack via a
+    package private property on the panel and hence we don't expose the idea of submenus (since the
+    stack implies this).
+   */
+  return MenuStack._mapping.get(panel) || new MenuStack();
+};
 
 /**
  * Directive which configures the element as a Menu which should contain child elements marked as
@@ -46,6 +57,7 @@ import {MenuKeyManager, TYPE_AHEAD_DEBOUNCE} from './menu-key-manager';
   providers: [
     {provide: CdkMenuGroup, useExisting: CdkMenu},
     {provide: CDK_MENU, useExisting: CdkMenu},
+    {provide: MENU_STACK, useFactory: menuStackFactory, deps: [CdkMenuPanel]},
   ],
 })
 export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnDestroy {

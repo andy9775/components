@@ -6,14 +6,20 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, TemplateRef} from '@angular/core';
+import {Directive, TemplateRef, InjectionToken} from '@angular/core';
 import {Menu} from './menu-interface';
+
+export const CDK_MENU_PANEL = new InjectionToken<CdkMenuPanel>('cdk-menu-panel');
 
 /**
  * Directive applied to an ng-template which wraps a CdkMenu and provides a reference to the
  * child element it wraps which allows for opening of the CdkMenu in an overlay.
  */
-@Directive({selector: 'ng-template[cdkMenuPanel]', exportAs: 'cdkMenuPanel'})
+@Directive({
+  selector: 'ng-template[cdkMenuPanel]',
+  exportAs: 'cdkMenuPanel',
+  providers: [{provide: CDK_MENU_PANEL, useExisting: CdkMenuPanel}],
+})
 export class CdkMenuPanel {
   /** Reference to the child menu component */
   _menu?: Menu;
