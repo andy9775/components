@@ -1,6 +1,11 @@
+<!-- <div style="background-color: blue; height: 100vh;" [cdkContextMenuTriggerFor]="context"> -->
 <ul cdkMenuBar class="example-menu-bar">
-  <li role="none"><button id="file_button" cdkMenuItem [cdkMenuTriggerFor]="file">File</button></li>
-  <li role="none"><button id="edit_button" cdkMenuItem [cdkMenuTriggerFor]="edit">Edit</button></li>
+  <li role="none">
+    <button id="file_button" cdkMenuItem [cdkMenuTriggerFor]="file">File</button>
+  </li>
+  <li role="none">
+    <button id="edit_button" cdkMenuItem [cdkMenuTriggerFor]="edit">Edit</button>
+  </li>
 </ul>
 
 <ng-template cdkMenuPanel #file="cdkMenuPanel">
@@ -19,5 +24,42 @@
     <li role="none"><button id="cut_button" cdkMenuItem>Cut</button></li>
     <li role="none"><button id="copy_button" cdkMenuItem>Copy</button></li>
     <li role="none"><button id="paste_button" cdkMenuItem>Paste</button></li>
+  </ul>
+</ng-template>
+<!-- </div> -->
+
+<div [cdkContextMenuTriggerFor]="context">
+  Lorem ipsum dolor, sit amet consectetur adipisicing elit. Quam veritatis odit nobis? Pariatur,
+  facere iure. Blanditiis magnam ea hic doloribus iste placeat saepe, magni voluptatibus fuga dolore
+  rerum voluptates doloremque!
+  <div [cdkContextMenuTriggerFor]="foo">hello</div>
+</div>
+
+<ng-template cdkMenuPanel #context="cdkMenuPanel">
+  <div
+    style="display: flex; flex-direction: column; background-color: red;"
+    cdkMenu
+    [cdkMenuPanel]="context"
+    id="context_menu"
+  >
+    <button cdkMenuItem [cdkMenuTriggerFor]="other" id="other_trigger">Other</button>
+
+    <button id="undo_button" cdkMenuItem>Undo</button>
+    <button id="redo_button" cdkMenuItem>Redo</button>
+  </div>
+</ng-template>
+
+<ng-template cdkMenuPanel #other="cdkMenuPanel">
+  <div cdkMenu [cdkMenuPanel]="other" id="other_menu">
+    <button id="cut_button" cdkMenuItem>Cut</button>
+    <button id="copy_button" cdkMenuItem>Copy</button>
+    <button id="paste_button" cdkMenuItem>Paste</button>
+  </div>
+</ng-template>
+
+<ng-template cdkMenuPanel #foo="cdkMenuPanel">
+  <ul cdkMenu [cdkMenuPanel]="foo" id="foo_menu">
+    <li role="none"><button id="cut_button" cdkMenuItem>First</button></li>
+    <li role="none"><button id="copy_button" cdkMenuItem>Second</button></li>
   </ul>
 </ng-template>
