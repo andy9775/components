@@ -1,5 +1,27 @@
 <mat-menubar>
-  <mat-menubar-item>File</mat-menubar-item>
-  <mat-menubar-item>Edit</mat-menubar-item>
-  <mat-menubar-item>View</mat-menubar-item>
+  <mat-menubar-item [cdkMenuTriggerFor]="file">File</mat-menubar-item>
+  <mat-menubar-item [cdkMenuTriggerFor]="edit">Edit</mat-menubar-item>
+  <mat-menubar-item [cdkMenuTriggerFor]="view">View</mat-menubar-item>
 </mat-menubar>
+
+<ng-template cdkMenuPanel #file="cdkMenuPanel">
+  <div cdkMenu [cdkMenuPanel]="file">
+    <button>Share</button>
+    <button>Open</button>
+    <button>Make a Copy</button>
+  </div>
+</ng-template>
+
+<ng-template cdkMenuPanel #edit="cdkMenuPanel">
+  <div cdkMenu [cdkMenuPanel]="edit">
+    <button>Undo</button>
+    <button>Redo</button>
+  </div>
+</ng-template>
+
+<ng-template cdkMenuPanel #view="cdkMenuPanel">
+  <div cdkMenu [cdkMenuPanel]="view">
+    <button>Show Ruler</button>
+    <button>Show Document Outline</button>
+  </div>
+</ng-template>
