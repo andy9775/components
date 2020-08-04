@@ -281,6 +281,7 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
         mergeAll(),
         switchMap((item: CdkMenuItem) => {
           this._openItem = item;
+          this._keyManager.setActiveItem(item);
           return item.getMenuTrigger()!.closed;
         }),
         takeUntil(this._destroyed)

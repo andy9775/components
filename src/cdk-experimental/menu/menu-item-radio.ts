@@ -23,6 +23,7 @@ import {CDK_MENU, Menu} from './menu-interface';
   exportAs: 'cdkMenuItemRadio',
   host: {
     '(click)': 'trigger()',
+    '[tabindex]': '_tabindex',
     'type': 'button',
     'role': 'menuitemradio',
     '[attr.aria-checked]': 'checked || null',

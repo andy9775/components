@@ -47,7 +47,7 @@ function removeIcons(element: Element) {
   selector: '[cdkMenuItem]',
   exportAs: 'cdkMenuItem',
   host: {
-    'tabindex': '-1',
+    '[tabindex]': '_tabindex',
     'type': 'button',
     'role': 'menuitem',
     'class': 'cdk-menu-item',
@@ -71,6 +71,9 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
    */
   @Output('cdkMenuItemTriggered') triggered: EventEmitter<void> = new EventEmitter();
 
+  /** The tabindex for this menu item. */
+  _tabindex: 0 | -1 = -1;
+
   /** Emits when the menu item is destroyed. */
   private readonly _destroyed: Subject<void> = new Subject();
 
@@ -89,7 +92,18 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
 
   /** Place focus on the element. */
   focus() {
+    this._tabindex = 0;
     this._elementRef.nativeElement.focus();
+  }
+
+  // In Ivy the `host` metadata will be merged, whereas in ViewEngine it is overridden. In order
+  // to avoid double event listeners, we need to use `HostListener`. Once Ivy is the default, we
+  // can move this back into `host`.
+  // tslint:disable:no-host-decorator-in-concrete
+  @HostListener('blur')
+  /** Reset the _tabindex to -1. */
+  _blur() {
+    this._tabindex = -1;
   }
 
   // In Ivy the `host` metadata will be merged, whereas in ViewEngine it is overridden. In order

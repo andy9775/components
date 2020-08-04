@@ -228,6 +228,32 @@ describe('MenuBar', () => {
           }
         );
 
+        it('should toggle tabindex of menu bar items with left/right arrow keys', () => {
+          focusMenuBar();
+
+          dispatchKeyboardEvent(nativeMenuBar, 'keydown', RIGHT_ARROW);
+          detectChanges();
+          expect(menuBarNativeItems[0].tabIndex).toEqual(-1);
+          expect(menuBarNativeItems[1].tabIndex).toEqual(0);
+
+          dispatchKeyboardEvent(nativeMenuBar, 'keydown', RIGHT_ARROW);
+          detectChanges();
+          expect(menuBarNativeItems[0].tabIndex).toEqual(0);
+          expect(menuBarNativeItems[1].tabIndex).toEqual(-1);
+
+          dispatchKeyboardEvent(nativeMenuBar, 'keydown', LEFT_ARROW);
+          detectChanges();
+          expect(menuBarNativeItems[0].tabIndex).toEqual(-1);
+          expect(menuBarNativeItems[1].tabIndex).toEqual(0);
+
+          dispatchKeyboardEvent(nativeMenuBar, 'keydown', LEFT_ARROW);
+          detectChanges();
+          expect(menuBarNativeItems[0].tabIndex).toEqual(0);
+          expect(menuBarNativeItems[1].tabIndex).toEqual(-1);
+
+          expect(nativeMenus.length).toBe(0);
+        });
+
         it(
           "should open the focused menu item's menu and focus the first submenu" +
             ' item on the down key',
@@ -263,6 +289,24 @@ describe('MenuBar', () => {
           detectChanges();
 
           expect(document.activeElement).toEqual(fileMenuNativeItems[0]);
+        });
+
+        it('should toggle tabindex to the active item when navigating down to submenu', () => {
+          focusMenuBar();
+
+          expect(menuBarNativeItems[0].tabIndex).toEqual(0);
+
+          dispatchKeyboardEvent(menuBarNativeItems[0], 'keydown', SPACE);
+          detectChanges();
+
+          expect(menuBarNativeItems[0].tabIndex).toEqual(-1);
+          expect(fileMenuNativeItems[0].tabIndex).toEqual(0);
+
+          dispatchKeyboardEvent(fileMenuNativeItems[0], 'keydown', DOWN_ARROW);
+          detectChanges();
+
+          expect(fileMenuNativeItems[0].tabIndex).toEqual(-1);
+          expect(fileMenuNativeItems[1].tabIndex).toEqual(0);
         });
       });
 
@@ -1026,6 +1070,48 @@ describe('MenuBar', () => {
         expect(document.querySelector(':focus')).toEqual(fileMenuNativeItems[1]);
       }
     );
+
+    it('should not set the tabindex when hovering and closed', () => {
+      dispatchMouseEvent(menuBarNativeItems[0], 'mouseenter');
+      detectChanges();
+
+      expect(menuBarNativeItems[0].tabIndex).toBe(-1);
+    });
+
+    it('should set the tabindex of the opened trigger to 0 and toggle on hover', () => {
+      openFileMenu();
+
+      expect(menuBarNativeItems[0].tabIndex).toBe(0);
+
+      dispatchMouseEvent(menuBarNativeItems[1], 'mouseenter');
+      detectChanges();
+
+      expect(menuBarNativeItems[0].tabIndex).toBe(-1);
+      expect(menuBarNativeItems[1].tabIndex).toBe(0);
+
+      dispatchMouseEvent(menuBarNativeItems[0], 'mouseenter');
+      detectChanges();
+
+      expect(menuBarNativeItems[0].tabIndex).toBe(0);
+      expect(menuBarNativeItems[1].tabIndex).toBe(-1);
+    });
+
+    it('should toggle the tabindex when navigating down to a submenu item', () => {
+      openFileMenu();
+      expect(menuBarNativeItems[0].tabIndex).toBe(0);
+
+      dispatchMouseEvent(fileMenuNativeItems[0], 'mouseenter');
+      detectChanges();
+
+      expect(menuBarNativeItems[0].tabIndex).toBe(-1);
+      expect(fileMenuNativeItems[0].tabIndex).toBe(0);
+
+      dispatchMouseEvent(fileMenuNativeItems[1], 'mouseenter');
+      detectChanges();
+
+      expect(fileMenuNativeItems[0].tabIndex).toBe(-1);
+      expect(fileMenuNativeItems[1].tabIndex).toBe(0);
+    });
   });
 });
 
