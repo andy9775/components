@@ -1,4 +1,4 @@
-import {Component, ViewChildren, QueryList, ElementRef} from '@angular/core';
+import {Component, ViewChildren, QueryList, ElementRef, ViewChild} from '@angular/core';
 import {ComponentFixture, TestBed, async} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {CdkMenuModule} from './menu-module';
@@ -6,6 +6,7 @@ import {CdkMenuItem} from './menu-item';
 import {CdkMenu} from './menu';
 import {CdkMenuItemTrigger} from './menu-item-trigger';
 import {Menu} from './menu-interface';
+import {dispatchMouseEvent} from '@angular/cdk/testing/private';
 
 describe('MenuItemTrigger', () => {
   describe('on CdkMenuItem', () => {
@@ -293,6 +294,56 @@ describe('MenuItemTrigger', () => {
         .toEqual(Math.floor(nativeMenus[1].getBoundingClientRect().top));
     });
   });
+
+  describe('standalone', () => {
+    let fixture: ComponentFixture<StandaloneTrigger>;
+
+    let nativeMenus: HTMLElement[];
+    let nativeTrigger: HTMLElement;
+
+    const grabElementsForTesting = () => {
+      nativeTrigger = fixture.componentInstance.nativeTrigger.nativeElement;
+      nativeMenus = fixture.componentInstance.nativeMenus.map(m => m.nativeElement);
+    };
+
+    /** run change detection and, extract and set the rendered elements */
+    const detectChanges = () => {
+      fixture.detectChanges();
+      grabElementsForTesting();
+    };
+
+    beforeEach(async(() => {
+      TestBed.configureTestingModule({
+        imports: [CdkMenuModule],
+        declarations: [StandaloneTrigger],
+      }).compileComponents();
+    }));
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(StandaloneTrigger);
+      detectChanges();
+    });
+
+    it('should open a menu with standalone trigger', () => {
+      nativeTrigger.click();
+      detectChanges();
+
+      expect(nativeMenus.length).toBe(1);
+    });
+
+    it('should close open menu on background click', () => {
+      nativeTrigger.click();
+      detectChanges();
+
+      dispatchMouseEvent(
+        fixture.debugElement.query(By.css('#container')).nativeElement,
+        'mousedown'
+      );
+      detectChanges();
+
+      expect(nativeMenus.length).toBe(0);
+    });
+  });
 });
 
 @Component({
@@ -330,4 +381,22 @@ class MenuBarWithNestedSubMenus {
   @ViewChildren(CdkMenuItemTrigger, {read: ElementRef}) nativeTriggers: QueryList<ElementRef>;
 
   @ViewChildren(CdkMenuItem) menuItems: QueryList<CdkMenuItem>;
+}
+
+@Component({
+  template: `
+    <div id="container">
+      <button cdkMenuItem [cdkMenuTriggerFor]="sub1">First</button>
+
+      <ng-template cdkMenuPanel #sub1="cdkMenuPanel">
+        <div cdkMenu [cdkMenuPanel]="sub1">
+          <button cdkMenuItem [cdkMenuTriggerFor]="sub2">Second</button>
+        </div>
+      </ng-template>
+    </div>
+  `,
+})
+class StandaloneTrigger {
+  @ViewChild(CdkMenuItem, {read: ElementRef}) nativeTrigger: ElementRef<HTMLButtonElement>;
+  @ViewChildren(CdkMenu, {read: ElementRef}) nativeMenus: QueryList<ElementRef>;
 }

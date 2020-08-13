@@ -1,7 +1,7 @@
 import {ComponentFixture, TestBed, async} from '@angular/core/testing';
-import {Component, ViewChild} from '@angular/core';
+import {Component, ViewChild, ViewChildren, QueryList, ElementRef} from '@angular/core';
 import {TAB} from '@angular/cdk/keycodes';
-import {dispatchKeyboardEvent} from '@angular/cdk/testing/private';
+import {dispatchKeyboardEvent, dispatchMouseEvent} from '@angular/cdk/testing/private';
 import {By} from '@angular/platform-browser';
 import {CdkMenu} from './menu';
 import {CdkMenuModule} from './menu-module';
@@ -9,6 +9,9 @@ import {CdkMenuItemCheckbox} from './menu-item-checkbox';
 import {CdkMenuItem} from './menu-item';
 import {CdkMenuPanel} from './menu-panel';
 import {MenuStack} from './menu-stack';
+import {CdkMenuGroup} from './menu-group';
+import {CdkMenuItemTrigger} from './menu-item-trigger';
+import {CdkMenuBar} from './menu-bar';
 
 describe('Menu', () => {
   describe('as checkbox group', () => {
@@ -195,6 +198,120 @@ describe('Menu', () => {
       expect(document.querySelector(':focus')).toEqual(nativeMenuItems[0]);
     });
   });
+
+  describe('background click closeout', () => {
+    let fixture: ComponentFixture<MenuBarWithMenusAndInlineMenu>;
+
+    let popoutMenus: CdkMenu[];
+    let triggers: CdkMenuItemTrigger[];
+    let nativeInlineMenuItem: HTMLElement;
+
+    /** open the attached menu. */
+    function openMenu() {
+      triggers[0].toggle();
+      detectChanges();
+    }
+
+    /** set the menus and triggers arrays. */
+    function grabElementsForTesting() {
+      popoutMenus = fixture.componentInstance.menus.toArray().filter(el => !el._isInline());
+      triggers = fixture.componentInstance.triggers.toArray();
+      nativeInlineMenuItem = fixture.componentInstance.nativeInlineMenuItem.nativeElement;
+    }
+
+    /** run change detection and, extract and set the rendered elements. */
+    function detectChanges() {
+      fixture.detectChanges();
+      grabElementsForTesting();
+    }
+
+    beforeEach(async(() => {
+      TestBed.configureTestingModule({
+        imports: [CdkMenuModule],
+        declarations: [MenuBarWithMenusAndInlineMenu],
+      }).compileComponents();
+    }));
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(MenuBarWithMenusAndInlineMenu);
+      detectChanges();
+    });
+
+    it('should close out all open menus when clicked outside the menu tree', () => {
+      openMenu();
+      expect(popoutMenus.length).toBe(1);
+
+      dispatchMouseEvent(
+        fixture.debugElement.query(By.css('#container')).nativeElement,
+        'mousedown'
+      );
+      detectChanges();
+
+      expect(popoutMenus.length).toBe(0);
+    });
+
+    it('should not close open menus when clicking on a menu group', () => {
+      openMenu();
+      expect(popoutMenus.length).toBe(1);
+
+      const menuGroups = fixture.debugElement.queryAll(By.directive(CdkMenuGroup));
+      menuGroups[2].nativeElement.click();
+      detectChanges();
+
+      expect(popoutMenus.length).toBe(1);
+    });
+
+    it('should not close open menus when clicking on a menu', () => {
+      openMenu();
+      expect(popoutMenus.length).toBe(1);
+
+      fixture.debugElement.query(By.directive(CdkMenu)).nativeElement.click();
+      detectChanges();
+
+      expect(popoutMenus.length).toBe(1);
+    });
+
+    it('should not close open menus when clicking on a menu bar', () => {
+      openMenu();
+      expect(popoutMenus.length).toBe(1);
+
+      fixture.debugElement.query(By.directive(CdkMenuBar)).nativeElement.click();
+      detectChanges();
+
+      expect(popoutMenus.length).toBe(1);
+    });
+
+    it('should not close when clicking on a CdkMenuItemCheckbox element', () => {
+      openMenu();
+      expect(popoutMenus.length).toBe(1);
+
+      fixture.debugElement.query(By.directive(CdkMenuItemCheckbox)).nativeElement.click();
+      fixture.detectChanges();
+
+      expect(popoutMenus.length).toBe(1);
+    });
+
+    it('should not close when clicking on a non-menu element inside menu', () => {
+      openMenu();
+      expect(popoutMenus.length).toBe(1);
+
+      fixture.debugElement.query(By.css('#inner-element')).nativeElement.click();
+      detectChanges();
+
+      expect(popoutMenus.length)
+        .withContext('menu should stay open if clicking on an inner span element')
+        .toBe(1);
+    });
+
+    it('should close the open menu when clicking on an inline menu item', () => {
+      openMenu();
+
+      dispatchMouseEvent(nativeInlineMenuItem, 'mousedown');
+      detectChanges();
+
+      expect(popoutMenus.length).toBe(0);
+    });
+  });
 });
 
 @Component({
@@ -276,3 +393,33 @@ class MenuWithConditionalGroup {
   `,
 })
 class InlineMenu {}
+
+@Component({
+  template: `
+    <div id="container">
+      <div cdkMenuBar>
+        <button cdkMenuItem [cdkMenuTriggerFor]="sub1">Trigger</button>
+      </div>
+
+      <ng-template cdkMenuPanel #sub1="cdkMenuPanel">
+        <div cdkMenu [cdkMenuPanel]="sub1">
+          <div cdkMenuGroup>
+            <button cdkMenuItemCheckbox>Trigger</button>
+            <span id="inner-element">A nested non-menuitem element</span>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <div cdkMenu>
+      <button #inline_menu_item cdkMenuItem></button>
+    </div>
+  `,
+})
+class MenuBarWithMenusAndInlineMenu {
+  @ViewChildren(CdkMenu) menus: QueryList<CdkMenu>;
+
+  @ViewChildren(CdkMenuItemTrigger) triggers: QueryList<CdkMenuItemTrigger>;
+
+  @ViewChild('inline_menu_item') nativeInlineMenuItem: ElementRef<HTMLButtonElement>;
+}

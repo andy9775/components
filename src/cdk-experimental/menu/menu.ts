@@ -19,7 +19,9 @@ import {
   OnInit,
   NgZone,
   HostListener,
+  Inject,
 } from '@angular/core';
+import {DOCUMENT} from '@angular/common';
 import {FocusKeyManager, FocusOrigin} from '@angular/cdk/a11y';
 import {
   LEFT_ARROW,
@@ -39,6 +41,24 @@ import {Menu, CDK_MENU} from './menu-interface';
 import {CdkMenuItem} from './menu-item';
 import {MenuStack, MenuStackItem, FocusNext, NoopMenuStack} from './menu-stack';
 import {getItemPointerEntries} from './item-pointer-entries';
+
+/**
+ * Whether the element is a menu bar or a popup menu.
+ * @param target the element to check.
+ * @return true if the given element is part of the menu module.
+ */
+function isMenuElement(target: Element) {
+  return target.classList.contains('cdk-menu') && !target.classList.contains('cdk-menu-inline');
+}
+
+/**
+ * Whether the given target element is a menu bar.
+ * @param target the element to check
+ * @return true if the given element is a menu bar
+ */
+function isMenuBarElement(target: Element) {
+  return target.classList.contains('cdk-menu-bar');
+}
 
 /**
  * Directive which configures the element as a Menu which should contain child elements marked as
@@ -95,6 +115,9 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
   /** The Menu Item which triggered the open submenu. */
   private _openItem?: CdkMenuItem;
 
+  /** Reference to the document. */
+  private readonly _document: Document;
+
   /**
    * A reference to the enclosing parent menu panel.
    *
@@ -106,12 +129,15 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
 
   constructor(
     private readonly _ngZone: NgZone,
+    @Inject(DOCUMENT) document: any,
     @Optional() private readonly _dir?: Directionality,
     // `CdkMenuPanel` is always used in combination with a `CdkMenu`.
     // tslint:disable-next-line: lightweight-tokens
     @Optional() private readonly _menuPanel?: CdkMenuPanel
   ) {
     super();
+
+    this._document = document;
   }
 
   ngOnInit() {

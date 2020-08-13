@@ -51,6 +51,7 @@ function removeIcons(element: Element) {
     'type': 'button',
     'role': 'menuitem',
     'class': 'cdk-menu-item',
+    '[class.cdk-standalone-menu-item]': '_isStandaloneTrigger()',
     '[attr.aria-disabled]': 'disabled || null',
   },
 })
@@ -82,8 +83,8 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
 
   constructor(
     readonly _elementRef: ElementRef<HTMLElement>,
-    @Inject(CDK_MENU) private readonly _parentMenu: Menu,
     private readonly _ngZone: NgZone,
+    @Optional() @Inject(CDK_MENU) private readonly _parentMenu?: Menu,
     @Optional() private readonly _dir?: Directionality,
     /** Reference to the CdkMenuItemTrigger directive if one is added to the same element */
     // `CdkMenuItem` is commonly used in combination with a `CdkMenuItemTrigger`.
@@ -125,9 +126,13 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
     }
 
     // don't set the tabindex if there are no open sibling or parent menus
-    if (!event || (event && !this._getMenuStack().isEmpty())) {
+    if (!event || (event && !this._getMenuStack()?.isEmpty())) {
       this._tabindex = 0;
     }
+  }
+
+  _isStandaloneTrigger() {
+    return !this._parentMenu;
   }
 
   // In Ivy the `host` metadata will be merged, whereas in ViewEngine it is overridden. In order
@@ -142,7 +147,7 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
   trigger() {
     if (!this.disabled && !this.hasMenu()) {
       this.triggered.next();
-      this._getMenuStack().closeAll();
+      this._getMenuStack()?.closeAll();
     }
   }
 
@@ -199,20 +204,20 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
         break;
 
       case RIGHT_ARROW:
-        if (this._isParentVertical() && !this.hasMenu()) {
+        if (this._isParentVertical() && !this.hasMenu() && this._parentMenu) {
           event.preventDefault();
           this._dir?.value === 'rtl'
-            ? this._getMenuStack().close(this._parentMenu, FocusNext.previousItem)
-            : this._getMenuStack().closeAll(FocusNext.nextItem);
+            ? this._getMenuStack()?.close(this._parentMenu, FocusNext.previousItem)
+            : this._getMenuStack()?.closeAll(FocusNext.nextItem);
         }
         break;
 
       case LEFT_ARROW:
-        if (this._isParentVertical() && !this.hasMenu()) {
+        if (this._isParentVertical() && !this.hasMenu() && this._parentMenu) {
           event.preventDefault();
           this._dir?.value === 'rtl'
-            ? this._getMenuStack().closeAll(FocusNext.nextItem)
-            : this._getMenuStack().close(this._parentMenu, FocusNext.previousItem);
+            ? this._getMenuStack()?.closeAll(FocusNext.nextItem)
+            : this._getMenuStack()?.close(this._parentMenu, FocusNext.previousItem);
         }
         break;
     }
@@ -223,21 +228,23 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
    * into.
    */
   private _setupMouseEnter() {
-    this._ngZone.runOutsideAngular(() =>
-      fromEvent(this._elementRef.nativeElement, 'mouseenter')
-        .pipe(
-          filter(() => !this._getMenuStack().isEmpty() && !this.hasMenu()),
-          takeUntil(this._destroyed)
-        )
-        .subscribe(() => {
-          this._ngZone.run(() => this._getMenuStack().closeSubMenuOf(this._parentMenu));
-        })
-    );
+    if (this._parentMenu) {
+      this._ngZone.runOutsideAngular(() =>
+        fromEvent(this._elementRef.nativeElement, 'mouseenter')
+          .pipe(
+            filter(() => !this._getMenuStack()?.isEmpty() && !this.hasMenu()),
+            takeUntil(this._destroyed)
+          )
+          .subscribe(() => {
+            this._ngZone.run(() => this._getMenuStack()?.closeSubMenuOf(this._parentMenu!));
+          })
+      );
+    }
   }
 
   /** Return true if the enclosing parent menu is configured in a horizontal orientation. */
   private _isParentVertical() {
-    return this._parentMenu.orientation === 'vertical';
+    return this._parentMenu?.orientation === 'vertical';
   }
 
   /** Get the MenuStack from the parent menu. */
@@ -245,7 +252,7 @@ export class CdkMenuItem implements FocusableOption, FocusableElement, OnDestroy
     // We use a function since at the construction of the MenuItemTrigger the parent Menu won't have
     // its menu stack set. Therefore we need to reference the menu stack from the parent each time
     // we want to use it.
-    return this._parentMenu._menuStack;
+    return this._parentMenu?._menuStack;
   }
 
   ngOnDestroy() {

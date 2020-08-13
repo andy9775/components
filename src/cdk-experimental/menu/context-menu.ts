@@ -18,7 +18,6 @@ import {
   Injectable,
   InjectionToken,
 } from '@angular/core';
-import {DOCUMENT} from '@angular/common';
 import {Directionality} from '@angular/cdk/bidi';
 import {
   OverlayRef,
@@ -29,24 +28,25 @@ import {
 } from '@angular/cdk/overlay';
 import {TemplatePortal, Portal} from '@angular/cdk/portal';
 import {coerceBooleanProperty, BooleanInput} from '@angular/cdk/coercion';
-import {fromEvent, merge, Subject} from 'rxjs';
+import {Subject} from 'rxjs';
 import {takeUntil} from 'rxjs/operators';
 import {CdkMenuPanel} from './menu-panel';
 import {MenuStack, MenuStackItem} from './menu-stack';
+import {BackgroundCloseService} from './background-close-service';
 
 /**
  * Check if the given element is part of the cdk menu module or nested within a cdk menu element.
  * @param target the element to check.
  * @return true if the given element is part of the menu module or nested within a cdk menu element.
  */
-function isWithinMenuElement(target: Element | null) {
-  while (target instanceof Element) {
+function shouldCloseMenu(target: Element | null) {
+  while (target) {
     if (target.classList.contains('cdk-menu') && !target.classList.contains('cdk-menu-inline')) {
-      return true;
+      return false;
     }
     target = target.parentElement;
   }
-  return false;
+  return true;
 }
 
 /** Tracks the last open context menu trigger across the entire application. */
@@ -143,10 +143,10 @@ export class CdkContextMenuTrigger implements OnDestroy {
   private readonly _destroyed: Subject<void> = new Subject();
 
   /** Reference to the document. */
-  private readonly _document: Document;
+  // private readonly _document: Document;
 
   /** Emits when the document listener should stop. */
-  private readonly _stopDocumentListener = merge(this.closed, this._destroyed);
+  // private readonly _stopDocumentListener = merge(this.closed, this._destroyed);
 
   /** The menu stack for this trigger and its associated menus. */
   private readonly _menuStack = new MenuStack();
@@ -156,10 +156,11 @@ export class CdkContextMenuTrigger implements OnDestroy {
     private readonly _overlay: Overlay,
     private readonly _contextMenuTracker: ContextMenuTracker,
     @Inject(CDK_CONTEXT_MENU_DEFAULT_OPTIONS) private readonly _options: ContextMenuOptions,
-    @Inject(DOCUMENT) document: any,
+    // @Inject(DOCUMENT) document: any,
+    private readonly _closeService: BackgroundCloseService,
     @Optional() private readonly _directionality?: Directionality
   ) {
-    this._document = document;
+    // this._document = document;
 
     this._setMenuStackListener();
   }
@@ -191,7 +192,8 @@ export class CdkContextMenuTrigger implements OnDestroy {
       }
 
       this._overlayRef.attach(this._getMenuContent());
-      this._setCloseListener();
+
+      this._closeService.startListener(shouldCloseMenu, this._menuStack);
     }
   }
 
@@ -290,26 +292,26 @@ export class CdkContextMenuTrigger implements OnDestroy {
    * Subscribe to the document click and context menu events and close out the menu when emitted.
    */
   private _setCloseListener() {
-    merge(fromEvent(this._document, 'click'), fromEvent(this._document, 'contextmenu'))
-      .pipe(takeUntil(this._stopDocumentListener))
-      .subscribe(event => {
-        const target = event.composedPath ? event.composedPath()[0] : event.target;
-        // stop the default context menu from appearing if user right-clicked somewhere outside of
-        // any context menu directive or if a user right-clicked inside of the opened menu and just
-        // close it.
-        if (event.type === 'contextmenu') {
-          if (target instanceof Element && isWithinMenuElement(target)) {
-            // Prevent the native context menu from opening within any open context menu or submenu
-            event.preventDefault();
-          } else {
-            this.close();
-          }
-        } else {
-          if (target instanceof Element && !isWithinMenuElement(target)) {
-            this.close();
-          }
-        }
-      });
+    // merge(fromEvent(this._document, 'click'), fromEvent(this._document, 'contextmenu'))
+    //   .pipe(takeUntil(this._stopDocumentListener))
+    //   .subscribe(event => {
+    //     const target = event.composedPath ? event.composedPath()[0] : event.target;
+    //     // stop the default context menu from appearing if user right-clicked somewhere outside of
+    //     // any context menu directive or if a user right-clicked inside of the opened menu and just
+    //     // close it.
+    //     if (event.type === 'contextmenu') {
+    //       if (target instanceof Element && isWithinMenuElement(target)) {
+    //         // Prevent the native context menu from opening within any open context menu or submenu
+    //         event.preventDefault();
+    //       } else {
+    //         this.close();
+    //       }
+    //     } else {
+    //       if (target instanceof Element && !isWithinMenuElement(target)) {
+    //         this.close();
+    //       }
+    //     }
+    //   });
   }
 
   /** Subscribe to the menu stack close events and close this menu when requested. */
