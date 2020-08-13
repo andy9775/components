@@ -1,4 +1,12 @@
-import {Component, ViewChildren, QueryList, ElementRef} from '@angular/core';
+import {
+  Component,
+  ViewChildren,
+  QueryList,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  ChangeDetectorRef,
+} from '@angular/core';
 import {ComponentFixture, TestBed, async} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {CdkMenuModule} from './menu-module';
@@ -6,6 +14,7 @@ import {CdkMenuItem} from './menu-item';
 import {CdkMenu} from './menu';
 import {CdkMenuItemTrigger} from './menu-item-trigger';
 import {Menu} from './menu-interface';
+import {dispatchMouseEvent} from '@angular/cdk/testing/private';
 
 describe('MenuItemTrigger', () => {
   describe('on CdkMenuItem', () => {
@@ -293,6 +302,24 @@ describe('MenuItemTrigger', () => {
         .toEqual(Math.floor(nativeMenus[1].getBoundingClientRect().top));
     });
   });
+
+  describe('with shared triggered menu', () => {
+    it('should not infinitely loop when trigger opens its parent menu', () => {
+      TestBed.configureTestingModule({
+        imports: [CdkMenuModule],
+        declarations: [TriggerOpensItsMenu],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TriggerOpensItsMenu);
+      fixture.detectChanges();
+
+      fixture.componentInstance.nativeSubTrigger.nativeElement.click();
+      fixture.detectChanges();
+      dispatchMouseEvent(fixture.componentInstance.nativeSecondItem.nativeElement, 'mouseenter');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.menus.length).toBe(0);
+    });
+  });
 });
 
 @Component({
@@ -330,4 +357,35 @@ class MenuBarWithNestedSubMenus {
   @ViewChildren(CdkMenuItemTrigger, {read: ElementRef}) nativeTriggers: QueryList<ElementRef>;
 
   @ViewChildren(CdkMenuItem) menuItems: QueryList<CdkMenuItem>;
+}
+
+@Component({
+  template: `
+    <div cdkMenuBar>
+      <button cdkMenuItem [cdkMenuTriggerFor]="menu"></button>
+    </div>
+
+    <ng-template cdkMenuPanel #menu="cdkMenuPanel">
+      <div cdkMenu [cdkMenuPanel]="menu">
+        <button #sub_trigger cdkMenuItem [cdkMenuTriggerFor]="menu"></button>
+        <button #item cdkMenuItem></button>
+      </div>
+    </ng-template>
+  `,
+})
+class TriggerOpensItsMenu implements AfterViewInit {
+  @ViewChild(CdkMenuItem, {read: ElementRef}) trigger: ElementRef<HTMLElement>;
+
+  @ViewChild('sub_trigger', {read: ElementRef}) nativeSubTrigger: ElementRef<HTMLButtonElement>;
+  @ViewChild('item', {read: ElementRef}) nativeSecondItem: ElementRef<HTMLButtonElement>;
+
+  @ViewChildren(CdkMenu) menus: QueryList<CdkMenu>;
+
+  constructor(private readonly _changeDetector: ChangeDetectorRef) {}
+
+  /** Immediately open the menu from the menu bar trigger. */
+  ngAfterViewInit() {
+    this.trigger.nativeElement.click();
+    this._changeDetector.detectChanges();
+  }
 }

@@ -86,7 +86,7 @@ export class MenuStack {
     let removed = false;
     if (this._elements.indexOf(lastItem) >= 0) {
       removed = this.peek() !== lastItem;
-      while (this.peek() !== lastItem) {
+      while (this.peek() !== lastItem && this.peek()) {
         this._close.next(this._elements.pop());
       }
     }
