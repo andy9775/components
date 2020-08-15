@@ -16,6 +16,7 @@ import {
   Inject,
   OnDestroy,
   Optional,
+  isDevMode,
 } from '@angular/core';
 import {Directionality} from '@angular/cdk/bidi';
 import {TemplatePortal} from '@angular/cdk/portal';
@@ -30,6 +31,7 @@ import {SPACE, ENTER, RIGHT_ARROW, LEFT_ARROW, DOWN_ARROW, UP_ARROW} from '@angu
 import {CdkMenuPanel} from './menu-panel';
 import {Menu, CDK_MENU} from './menu-interface';
 import {FocusNext} from './menu-stack';
+import {throwWrongTriggerError} from './menu-errors';
 
 /**
  * A directive to be combined with CdkMenuItem which opens the Menu it is bound to. If the
@@ -99,6 +101,8 @@ export class CdkMenuItemTrigger implements OnDestroy {
   /** Open the attached menu. */
   openMenu() {
     if (!this.isMenuOpen()) {
+      this._checkMenu();
+
       this.opened.next();
 
       this._overlayRef = this._overlayRef || this._overlay.create(this._getOverlayConfig());
@@ -118,6 +122,7 @@ export class CdkMenuItemTrigger implements OnDestroy {
 
   /** Return true if the trigger has an attached menu */
   hasMenu() {
+    this._checkMenu();
     return !!this.menuPanel;
   }
 
@@ -274,6 +279,13 @@ export class CdkMenuItemTrigger implements OnDestroy {
     // its menu stack set. Therefore we need to reference the menu stack from the parent each time
     // we want to use it.
     return this._parentMenu._menuStack;
+  }
+
+  /** Ensure that _menuPanel is referencing a CdkMenuPanel. */
+  private _checkMenu() {
+    if (isDevMode() && !(this.menuPanel instanceof CdkMenuPanel)) {
+      throwWrongTriggerError();
+    }
   }
 
   ngOnDestroy() {

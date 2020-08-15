@@ -1,5 +1,14 @@
-import {Component, ViewChildren, QueryList, ElementRef} from '@angular/core';
-import {ComponentFixture, TestBed, async} from '@angular/core/testing';
+import {
+  Component,
+  ViewChildren,
+  QueryList,
+  ElementRef,
+  Type,
+  AfterViewInit,
+  ChangeDetectorRef,
+  ViewChild,
+} from '@angular/core';
+import {ComponentFixture, TestBed, async, fakeAsync} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {CdkMenuModule} from './menu-module';
 import {CdkMenuItem} from './menu-item';
@@ -293,6 +302,35 @@ describe('MenuItemTrigger', () => {
         .toEqual(Math.floor(nativeMenus[1].getBoundingClientRect().top));
     });
   });
+
+  describe('with invalid CdkMenuPanel reference', () => {
+    /**
+     * Return a function which builds the given component and renders it.
+     * @param componentClass the component to create
+     */
+    function createComponent<T>(componentClass: Type<T>) {
+      return function () {
+        TestBed.configureTestingModule({
+          imports: [CdkMenuModule],
+          declarations: [componentClass],
+        }).compileComponents();
+
+        TestBed.createComponent(componentClass).detectChanges();
+      };
+    }
+
+    it('should throw an error for missing CdkMenuPanel', () => {
+      expect(createComponent(TriggerWithNoTarget)).toThrowError(
+        /Incorrect or missing CdkMenuPanel in CdkMenuTrigger/
+      );
+    });
+
+    it('should throw an error for incorrect CdkMenuPanel reference', () => {
+      expect(createComponent(TriggerWithIncorrectReference)).toThrowError(
+        /Incorrect or missing CdkMenuPanel in CdkMenuTrigger/
+      );
+    });
+  });
 });
 
 @Component({
@@ -330,4 +368,46 @@ class MenuBarWithNestedSubMenus {
   @ViewChildren(CdkMenuItemTrigger, {read: ElementRef}) nativeTriggers: QueryList<ElementRef>;
 
   @ViewChildren(CdkMenuItem) menuItems: QueryList<CdkMenuItem>;
+}
+
+@Component({
+  template: `
+    <div cdkMenuBar>
+      <button cdkMenuItem [cdkMenuTriggerFor]=""></button>
+    </div>
+  `,
+})
+class TriggerWithNoTarget implements AfterViewInit {
+  @ViewChild(CdkMenuItem, {read: ElementRef}) nativeTrigger: ElementRef<HTMLElement>;
+
+  constructor(private readonly _changeDetector: ChangeDetectorRef) {}
+
+  ngAfterViewInit() {
+    this.nativeTrigger.nativeElement.click();
+    this._changeDetector.detectChanges();
+  }
+}
+
+@Component({
+  template: `
+    <div cdkMenuBar>
+      <button cdkMenuItem [cdkMenuTriggerFor]="menu"></button>
+    </div>
+
+    <ng-template cdkMenuPanel #menu>
+      <div cdkMenu>
+        <button cdkMenuItem [cdkMenuTriggerFor]="sub2">Second</button>
+      </div>
+    </ng-template>
+  `,
+})
+class TriggerWithIncorrectReference implements AfterViewInit {
+  @ViewChild(CdkMenuItem, {read: ElementRef}) nativeTrigger: ElementRef<HTMLElement>;
+
+  constructor(private readonly _changeDetector: ChangeDetectorRef) {}
+
+  ngAfterViewInit() {
+    this.nativeTrigger.nativeElement.click();
+    this._changeDetector.detectChanges();
+  }
 }
