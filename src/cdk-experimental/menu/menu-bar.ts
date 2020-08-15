@@ -20,12 +20,12 @@ import {
 import {Directionality} from '@angular/cdk/bidi';
 import {FocusKeyManager, FocusOrigin} from '@angular/cdk/a11y';
 import {LEFT_ARROW, RIGHT_ARROW, UP_ARROW, DOWN_ARROW, ESCAPE, TAB} from '@angular/cdk/keycodes';
-import {takeUntil, mergeAll, mapTo, startWith, mergeMap, switchMap} from 'rxjs/operators';
-import {Subject, merge, Observable} from 'rxjs';
+import {takeUntil, mergeAll, mapTo, startWith, mergeMap, switchMap, take} from 'rxjs/operators';
+import {Subject, merge, Observable, Subscription} from 'rxjs';
 import {CdkMenuGroup} from './menu-group';
 import {CDK_MENU, Menu} from './menu-interface';
 import {CdkMenuItem} from './menu-item';
-import {MenuStack, MenuStackItem, FocusNext} from './menu-stack';
+import {MenuStack, MenuStackItem, FocusNext, EmptiedCause, EmptyEvent} from './menu-stack';
 import {getItemPointerEntries} from './item-pointer-entries';
 
 /**
@@ -52,7 +52,7 @@ function isMenuElement(target: Element) {
   host: {
     'role': 'menubar',
     'class': 'cdk-menu-bar',
-    'tabindex': '0',
+    '[tabindex]': '_tabindex',
     '[attr.aria-orientation]': 'orientation',
   },
   providers: [
@@ -67,6 +67,9 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
    * Does not affect styling/layout.
    */
   @Input('cdkMenuBarOrientation') orientation: 'horizontal' | 'vertical' = 'horizontal';
+
+  /** The tabindex for this menubar. */
+  _tabindex: 0 | -1 = 0;
 
   /** Handles keyboard events for the MenuBar. */
   private _keyManager: FocusKeyManager<CdkMenuItem>;
@@ -83,6 +86,9 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
 
   /** The Menu Item which triggered the open submenu. */
   private _openItem?: CdkMenuItem;
+
+  /** Subscription to the key managers tabout emitter. */
+  private _tabOutSubscription = Subscription.EMPTY;
 
   constructor(
     readonly _menuStack: MenuStack,
@@ -106,6 +112,26 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
   // can move this back into `host`.
   // tslint:disable:no-host-decorator-in-concrete
   @HostListener('focus')
+  /**
+   * Set focus to the previous or first menu item, update the menu bars tabindex to -1 and ensure
+   * that when tabbing out the tabindex is reset back to 0.
+   */
+  _setFocus() {
+    this._allowProgrammaticFocus();
+
+    if (this._keyManager.activeItem) {
+      this._keyManager.activeItem.focus();
+    } else {
+      this.focusFirstItem('keyboard');
+    }
+
+    // If we don't call setTimeout the menubar will have its tab index reset before the next element
+    // takes focus resulting in the menubar acting as a focus trap.
+    this._tabOutSubscription = this._keyManager.tabOut
+      .pipe(take(1), takeUntil(this._destroyed))
+      .subscribe(() => setTimeout(() => this._allowTabFocus()));
+  }
+
   /** Place focus on the first MenuItem in the menu and set the focus origin. */
   focusFirstItem(focusOrigin: FocusOrigin = 'program') {
     this._keyManager.setFocusOrigin(focusOrigin);
@@ -162,7 +188,8 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
         break;
 
       case TAB:
-        keyManager.activeItem?.getMenuTrigger()?.closeMenu();
+        this._menuStack.closeAll(undefined, EmptiedCause.tab);
+        keyManager.onKeydown(event);
         break;
 
       default:
@@ -205,9 +232,14 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
       .pipe(takeUntil(this._destroyed))
       .subscribe((item: MenuStackItem) => this._closeOpenMenu(item));
 
-    this._menuStack.emptied
-      .pipe(takeUntil(this._destroyed))
-      .subscribe((event: FocusNext) => this._toggleOpenMenu(event));
+    this._menuStack.emptied.pipe(takeUntil(this._destroyed)).subscribe((event: EmptyEvent) => {
+      this._toggleOpenMenu(event.focusNext);
+
+      if (event.cause === EmptiedCause.tab) {
+        this._allowTabFocus();
+        this._tabOutSubscription.unsubscribe();
+      }
+    });
   }
 
   /**
@@ -228,7 +260,7 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
    * Set focus to either the current, previous or next item based on the FocusNext event, then
    * open the previous or next item.
    */
-  private _toggleOpenMenu(event: FocusNext) {
+  private _toggleOpenMenu(event?: FocusNext) {
     const keyManager = this._keyManager;
     switch (event) {
       case FocusNext.nextItem:
@@ -307,6 +339,16 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
   /** Return true if the MenuBar has an open submenu. */
   private _hasOpenSubmenu() {
     return !!this._openItem;
+  }
+
+  /** Sets the tabindex to 0 allowing for tab focus. */
+  private _allowTabFocus() {
+    this._tabindex = 0;
+  }
+
+  /** Sets the tabindex to -1 allowing for programmatic focus. */
+  private _allowProgrammaticFocus() {
+    this._tabindex = -1;
   }
 
   ngOnDestroy() {

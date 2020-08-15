@@ -15,6 +15,14 @@ export const enum FocusNext {
   currentItem,
 }
 
+/** The reason the MenuStack was emptied out. */
+export const enum EmptiedCause {
+  tab,
+}
+
+/** Type emitted when the menu stack has emptied out. */
+export type EmptyEvent = {focusNext?: FocusNext; cause?: EmptiedCause};
+
 /**
  * Interface for the elements tracked in the MenuStack.
  */
@@ -37,7 +45,7 @@ export class MenuStack {
   private readonly _close: Subject<MenuStackItem> = new Subject();
 
   /** Emits once the MenuStack has become empty after popping off elements. */
-  private readonly _empty: Subject<FocusNext> = new Subject();
+  private readonly _empty: Subject<EmptyEvent> = new Subject();
 
   /** Observable which emits the MenuStackItem which has been requested to close. */
   readonly closed: Observable<MenuStackItem> = this._close;
@@ -47,7 +55,7 @@ export class MenuStack {
    * emits a FocusNext event which specifies the action the closer has requested the listener
    * perform.
    */
-  readonly emptied: Observable<FocusNext> = this._empty;
+  readonly emptied: Observable<EmptyEvent> = this._empty;
 
   /** @param menu the MenuStackItem to put on the stack. */
   push(menu: MenuStackItem) {
@@ -61,8 +69,9 @@ export class MenuStack {
    * @param focusNext the event to emit on the `empty` observable if the method call resulted in an
    * empty stack. Does not emit if the stack was initially empty or if `lastItem` was not on the
    * stack.
+   * @param cause specifies the cause if the call resulted in the stack being empty.
    */
-  close(lastItem: MenuStackItem, focusNext?: FocusNext) {
+  close(lastItem: MenuStackItem, focusNext?: FocusNext, cause?: EmptiedCause) {
     if (this._elements.indexOf(lastItem) >= 0) {
       let poppedElement;
       do {
@@ -71,7 +80,7 @@ export class MenuStack {
       } while (poppedElement !== lastItem);
 
       if (this.isEmpty()) {
-        this._empty.next(focusNext);
+        this._empty.next({focusNext, cause});
       }
     }
   }
@@ -97,8 +106,9 @@ export class MenuStack {
    * Pop off all MenuStackItems and emit each one on the `close` observable one by one.
    * @param focusNext the event to emit on the `empty` observable once the stack is emptied. Does
    * not emit if the stack was initially empty.
+   * @param cause the cause of emptying the menu stack.
    */
-  closeAll(focusNext?: FocusNext) {
+  closeAll(focusNext?: FocusNext, cause?: EmptiedCause) {
     if (!this.isEmpty()) {
       while (!this.isEmpty()) {
         const menuStackItem = this._elements.pop();
@@ -107,7 +117,7 @@ export class MenuStack {
         }
       }
 
-      this._empty.next(focusNext);
+      this._empty.next({focusNext, cause});
     }
   }
 

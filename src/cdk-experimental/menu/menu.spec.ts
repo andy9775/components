@@ -1,4 +1,4 @@
-import {ComponentFixture, TestBed, async} from '@angular/core/testing';
+import {ComponentFixture, TestBed, async, tick, fakeAsync} from '@angular/core/testing';
 import {Component, ViewChild} from '@angular/core';
 import {TAB} from '@angular/cdk/keycodes';
 import {dispatchKeyboardEvent} from '@angular/cdk/testing/private';
@@ -187,6 +187,26 @@ describe('Menu', () => {
       const item = fixture.debugElement.query(By.directive(CdkMenu)).nativeElement;
       expect(item.getAttribute('tabindex')).toBe('0');
     });
+
+    it('should set its tabindex to -1 when it gets tabbed in', () => {
+      dispatchKeyboardEvent(document, 'keydown', TAB);
+      nativeMenu.focus();
+      fixture.detectChanges();
+
+      expect(nativeMenu.tabIndex).toBe(-1);
+    });
+
+    it('should reset its tabindex to 0 when it gets shift-tabbed out', fakeAsync(() => {
+      dispatchKeyboardEvent(document, 'keydown', TAB);
+      nativeMenu.focus();
+      fixture.detectChanges();
+
+      dispatchKeyboardEvent(nativeMenu, 'keydown', TAB, undefined, {shift: true});
+      tick(); // we want the setTimeout to execute
+      fixture.detectChanges();
+
+      expect(nativeMenu.tabIndex).toBe(0);
+    }));
 
     it('should focus the first menu item when it gets tabbed in', () => {
       dispatchKeyboardEvent(document, 'keydown', TAB);

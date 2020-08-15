@@ -23,7 +23,7 @@ import {CdkMenuBar, CdkMenuGroup, CDK_MENU, MenuStack} from '@angular/cdk-experi
   host: {
     'role': 'menubar',
     'class': 'cdk-menu-bar mat-menubar',
-    'tabindex': '0',
+    '[tabindex]': '_tabindex',
     '[attr.aria-orientation]': 'orientation',
   },
   providers: [

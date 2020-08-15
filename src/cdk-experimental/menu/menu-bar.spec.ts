@@ -156,6 +156,26 @@ describe('MenuBar', () => {
           expect(document.activeElement).toEqual(menuBarNativeItems[0]);
         });
 
+        it('should have a tabindex of 0 be default', () => {
+          expect(nativeMenuBar.tabIndex).toBe(0);
+        });
+
+        it('should set the tabindex to -1 when it gets tabbed in', () => {
+          focusMenuBar();
+
+          expect(nativeMenuBar.tabIndex).toBe(-1);
+        });
+
+        it('should reset the tabindex to 0 when it gets shift-tabbed out', fakeAsync(() => {
+          focusMenuBar();
+
+          dispatchKeyboardEvent(nativeMenuBar, 'keydown', TAB, undefined, {shift: true});
+          tick(); // wait for the setTimeout call to complete
+          fixture.detectChanges();
+
+          expect(nativeMenuBar.tabIndex).toBe(0);
+        }));
+
         it('should toggle the last/first menu item on end/home key press', () => {
           focusMenuBar();
           dispatchKeyboardEvent(nativeMenuBar, 'keydown', END);
@@ -524,6 +544,25 @@ describe('MenuBar', () => {
 
           expect(nativeMenus.length).toBe(0);
         });
+
+        it('should set the tabindex of the menubar to -1 when opening a submenu', () => {
+          openFileMenu();
+
+          expect(nativeMenuBar.tabIndex).toBe(-1);
+        });
+
+        it(
+          'should reset the tabindex of the menubar bar to 0 when it gets shift-tabbed ' +
+            'out from a submenu',
+          () => {
+            openFileMenu();
+
+            dispatchKeyboardEvent(nativeMenus[0], 'keydown', TAB, undefined, {shift: true});
+            fixture.detectChanges();
+
+            expect(nativeMenuBar.tabIndex).toBe(0);
+          }
+        );
       });
     });
 

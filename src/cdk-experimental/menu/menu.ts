@@ -32,12 +32,19 @@ import {
 } from '@angular/cdk/keycodes';
 import {Directionality} from '@angular/cdk/bidi';
 import {take, takeUntil, startWith, mergeMap, mapTo, mergeAll, switchMap} from 'rxjs/operators';
-import {merge, Observable} from 'rxjs';
+import {merge, Observable, Subscription} from 'rxjs';
 import {CdkMenuGroup} from './menu-group';
 import {CdkMenuPanel} from './menu-panel';
 import {Menu, CDK_MENU} from './menu-interface';
 import {CdkMenuItem} from './menu-item';
-import {MenuStack, MenuStackItem, FocusNext, NoopMenuStack} from './menu-stack';
+import {
+  MenuStack,
+  MenuStackItem,
+  FocusNext,
+  NoopMenuStack,
+  EmptyEvent,
+  EmptiedCause,
+} from './menu-stack';
 import {getItemPointerEntries} from './item-pointer-entries';
 
 /**
@@ -51,7 +58,7 @@ import {getItemPointerEntries} from './item-pointer-entries';
   selector: '[cdkMenu]',
   exportAs: 'cdkMenu',
   host: {
-    '[tabindex]': '_isInline() ? 0 : null',
+    '[tabindex]': '_isInline() ? _tabindex : null',
     'role': 'menu',
     'class': 'cdk-menu',
     '[class.cdk-menu-inline]': '_isInline()',
@@ -78,6 +85,9 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
   /** Track the Menus making up the open menu stack. */
   _menuStack: MenuStack = new NoopMenuStack();
 
+  /** The tabindex to be set for this menu. */
+  _tabindex: 0 | -1 = 0;
+
   /** Handles keyboard events for the menu. */
   private _keyManager: FocusKeyManager<CdkMenuItem>;
 
@@ -94,6 +104,9 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
 
   /** The Menu Item which triggered the open submenu. */
   private _openItem?: CdkMenuItem;
+
+  /** Subscription to the key managers tabout emitter. */
+  private _tabOutSubscription = Subscription.EMPTY;
 
   /**
    * A reference to the enclosing parent menu panel.
@@ -133,6 +146,26 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
   // can move this back into `host`.
   // tslint:disable:no-host-decorator-in-concrete
   @HostListener('focus')
+  /**
+   * Set focus to the previous or first menu item, update the menus tabindex to -1 and ensure that
+   * when tabbing out the tabindex is reset back to 0.
+   */
+  _setFocus() {
+    this._allowProgrammaticFocus();
+
+    if (this._keyManager.activeItem) {
+      this._keyManager.activeItem.focus();
+    } else {
+      this.focusFirstItem('keyboard');
+    }
+
+    // If we don't call setTimeout the menu will have its tab index reset before the next element
+    // takes focus resulting in the menu acting as a focus trap.
+    this._tabOutSubscription = this._keyManager.tabOut
+      .pipe(take(1), takeUntil(this.closed))
+      .subscribe(() => setTimeout(() => this._allowTabFocus()));
+  }
+
   /** Place focus on the first MenuItem in the menu and set the focus origin. */
   focusFirstItem(focusOrigin: FocusOrigin = 'program') {
     this._keyManager.setFocusOrigin(focusOrigin);
@@ -180,7 +213,8 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
         break;
 
       case TAB:
-        this._menuStack.closeAll();
+        this._menuStack.closeAll(undefined, EmptiedCause.tab);
+        keyManager.onKeydown(event);
         break;
 
       default:
@@ -255,9 +289,14 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
       .pipe(takeUntil(this.closed))
       .subscribe((item: MenuStackItem) => this._closeOpenMenu(item));
 
-    this._menuStack.emptied
-      .pipe(takeUntil(this.closed))
-      .subscribe((event: FocusNext) => this._toggleMenuFocus(event));
+    this._menuStack.emptied.pipe(takeUntil(this.closed)).subscribe((event: EmptyEvent) => {
+      this._toggleMenuFocus(event.focusNext);
+
+      if (event.cause === EmptiedCause.tab) {
+        this._allowTabFocus();
+        this._tabOutSubscription.unsubscribe();
+      }
+    });
   }
 
   /**
@@ -275,7 +314,7 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
   }
 
   /** Set focus the either the current, previous or next item based on the FocusNext event. */
-  private _toggleMenuFocus(event: FocusNext) {
+  private _toggleMenuFocus(event?: FocusNext) {
     const keyManager = this._keyManager;
     switch (event) {
       case FocusNext.nextItem:
@@ -325,6 +364,16 @@ export class CdkMenu extends CdkMenuGroup implements Menu, AfterContentInit, OnI
   /** Return true if this menu has been configured in a horizontal orientation. */
   private _isHorizontal() {
     return this.orientation === 'horizontal';
+  }
+
+  /** Sets the tabindex to 0 allowing for tab focus. */
+  private _allowTabFocus() {
+    this._tabindex = 0;
+  }
+
+  /** Sets the tabindex to -1 allowing for programmatic focus. */
+  private _allowProgrammaticFocus() {
+    this._tabindex = -1;
   }
 
   /**
