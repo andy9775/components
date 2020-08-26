@@ -16,17 +16,20 @@ import {
   Optional,
   NgZone,
   HostListener,
+  ElementRef,
+  Inject,
 } from '@angular/core';
 import {Directionality} from '@angular/cdk/bidi';
 import {FocusKeyManager, FocusOrigin} from '@angular/cdk/a11y';
 import {LEFT_ARROW, RIGHT_ARROW, UP_ARROW, DOWN_ARROW, ESCAPE, TAB} from '@angular/cdk/keycodes';
 import {takeUntil, mergeAll, mapTo, startWith, mergeMap, switchMap} from 'rxjs/operators';
-import {Subject, merge, Observable} from 'rxjs';
+import {Subject, merge} from 'rxjs';
 import {CdkMenuGroup} from './menu-group';
 import {CDK_MENU, Menu} from './menu-interface';
 import {CdkMenuItem} from './menu-item';
 import {MenuStack, MenuStackItem, FocusNext} from './menu-stack';
-import {getItemPointerEntries} from './item-pointer-entries';
+import {PointerFocusTracker} from './pointer-focus-tracker';
+import {MenuAim, MENU_AIM, TargetMenuAim} from './menu-aim';
 
 /**
  * Whether the element is a menu bar or a popup menu.
@@ -59,6 +62,7 @@ function isMenuElement(target: Element) {
     {provide: CdkMenuGroup, useExisting: CdkMenuBar},
     {provide: CDK_MENU, useExisting: CdkMenuBar},
     {provide: MenuStack, useClass: MenuStack},
+    {provide: MENU_AIM, useClass: TargetMenuAim},
   ],
 })
 export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, OnDestroy {
@@ -71,8 +75,8 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
   /** Handles keyboard events for the MenuBar. */
   private _keyManager: FocusKeyManager<CdkMenuItem>;
 
-  /** Emits when a child MenuItem is moused over. */
-  private _mouseFocusChanged: Observable<CdkMenuItem>;
+  /** Manages items under mouse focus */
+  private _pointerTracker?: PointerFocusTracker<CdkMenuItem>;
 
   /** Emits when the MenuBar is destroyed. */
   private readonly _destroyed: Subject<void> = new Subject();
@@ -87,6 +91,8 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
   constructor(
     readonly _menuStack: MenuStack,
     private readonly _ngZone: NgZone,
+    readonly _elementRef: ElementRef<HTMLElement>,
+    @Optional() @Inject(MENU_AIM) private readonly _menuAim?: MenuAim,
     @Optional() private readonly _dir?: Directionality
   ) {
     super();
@@ -99,6 +105,8 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
     this._subscribeToMenuOpen();
     this._subscribeToMenuStack();
     this._subscribeToMouseManager();
+
+    this._menuAim?.withMouseManager(this._pointerTracker!).withMenu(this);
   }
 
   // In Ivy the `host` metadata will be merged, whereas in ViewEngine it is overridden. In order
@@ -185,13 +193,13 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
   }
 
   /**
-   * Set the FocusMouseManager and ensure that when mouse focus changes the key manager is updated
+   * Set the PointerFocusTracker and ensure that when mouse focus changes the key manager is updated
    * with the latest menu item under mouse focus.
    */
   private _subscribeToMouseManager() {
     this._ngZone.runOutsideAngular(() => {
-      this._mouseFocusChanged = getItemPointerEntries(this._allItems);
-      this._mouseFocusChanged.pipe(takeUntil(this._destroyed)).subscribe(item => {
+      this._pointerTracker = new PointerFocusTracker(this._allItems);
+      this._pointerTracker.entered.pipe(takeUntil(this._destroyed)).subscribe(item => {
         if (this._hasOpenSubmenu()) {
           this._keyManager.setActiveItem(item);
         }
@@ -219,8 +227,9 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
     const keyManager = this._keyManager;
     if (menu === trigger?.getMenuTrigger()?.getMenu()) {
       trigger.getMenuTrigger()?.closeMenu();
-      keyManager.setFocusOrigin('keyboard');
-      keyManager.setActiveItem(trigger);
+      // If the user has moused over a sibling item we want to focus the element under mouse focus
+      // not the trigger which previously opened the now closed menu.
+      keyManager.setActiveItem(this._pointerTracker?.activeElement || trigger);
     }
   }
 
@@ -311,7 +320,10 @@ export class CdkMenuBar extends CdkMenuGroup implements Menu, AfterContentInit, 
 
   ngOnDestroy() {
     super.ngOnDestroy();
+
     this._destroyed.next();
     this._destroyed.complete();
+
+    this._pointerTracker?.destroy();
   }
 }

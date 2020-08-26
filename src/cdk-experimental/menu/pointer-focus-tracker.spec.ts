@@ -2,7 +2,7 @@ import {Component, QueryList, ElementRef, ViewChildren, AfterViewInit} from '@an
 import {async, ComponentFixture, TestBed} from '@angular/core/testing';
 import {createMouseEvent, dispatchEvent} from '@angular/cdk/testing/private';
 import {Observable} from 'rxjs';
-import {FocusableElement, getItemPointerEntries} from './item-pointer-entries';
+import {FocusableElement, PointerFocusTracker} from './pointer-focus-tracker';
 
 describe('FocusMouseManger', () => {
   let fixture: ComponentFixture<MultiElementWithConditionalComponent>;
@@ -98,6 +98,6 @@ class MultiElementWithConditionalComponent implements AfterViewInit {
   mouseFocusChanged: Observable<MockWrapper>;
 
   ngAfterViewInit() {
-    this.mouseFocusChanged = getItemPointerEntries(this._allItems);
+    this.mouseFocusChanged = new PointerFocusTracker(this._allItems).entered;
   }
 }

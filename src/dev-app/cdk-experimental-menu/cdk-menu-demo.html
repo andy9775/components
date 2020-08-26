@@ -3,12 +3,14 @@
 
   <div cdkMenuBar>
     <button id="file_button" cdkMenuItem [cdkMenuTriggerFor]="file">File</button>
-    <button id="edit_button" cdkMenuItem [cdkMenuTriggerFor]="edit">Edit</button>
+    <!-- <button id="edit_button" cdkMenuItem [cdkMenuTriggerFor]="edit">Edit</button> -->
   </div>
 
   <ng-template cdkMenuPanel #file="cdkMenuPanel">
     <div cdkMenu class="example-menu" [cdkMenuPanel]="file" id="file_menu">
+      <button id="edit_button" cdkMenuItem [cdkMenuTriggerFor]="edit">Edit</button>
       <button id="share_button" cdkMenuItem [cdkMenuTriggerFor]="share">Share</button>
+
       <button id="open_button" cdkMenuItem>Open</button>
       <button id="rename_button" cdkMenuItem>Rename</button>
       <button id="print_button" cdkMenuItem>Print</button>

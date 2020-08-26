@@ -16,6 +16,7 @@ import {
   Inject,
   OnDestroy,
   Optional,
+  NgZone,
 } from '@angular/core';
 import {Directionality} from '@angular/cdk/bidi';
 import {TemplatePortal} from '@angular/cdk/portal';
@@ -27,10 +28,13 @@ import {
   FlexibleConnectedPositionStrategy,
 } from '@angular/cdk/overlay';
 import {SPACE, ENTER, RIGHT_ARROW, LEFT_ARROW, DOWN_ARROW, UP_ARROW} from '@angular/cdk/keycodes';
+import {fromEvent, Subject} from 'rxjs';
+import {takeUntil, filter} from 'rxjs/operators';
 import {CdkMenuPanel} from './menu-panel';
 import {Menu, CDK_MENU} from './menu-interface';
 import {FocusNext} from './menu-stack';
 import {throwExistingMenuStackError} from './menu-errors';
+import {HoverTarget, MENU_AIM, MenuAim} from './menu-aim';
 
 /**
  * A directive to be combined with CdkMenuItem which opens the Menu it is bound to. If the
@@ -46,14 +50,13 @@ import {throwExistingMenuStackError} from './menu-errors';
   exportAs: 'cdkMenuTriggerFor',
   host: {
     '(keydown)': '_toggleOnKeydown($event)',
-    '(mouseenter)': '_toggleOnMouseEnter()',
     '(click)': 'toggle()',
     'tabindex': '-1',
     'aria-haspopup': 'menu',
     '[attr.aria-expanded]': 'isMenuOpen()',
   },
 })
-export class CdkMenuItemTrigger implements OnDestroy {
+export class CdkMenuItemTrigger implements HoverTarget, OnDestroy {
   /** Template reference variable to the menu this trigger opens */
   @Input('cdkMenuTriggerFor')
   get menuPanel(): CdkMenuPanel | undefined {
@@ -88,13 +91,20 @@ export class CdkMenuItemTrigger implements OnDestroy {
   /** The content of the menu panel opened by this trigger. */
   private _panelContent: TemplatePortal;
 
+  /** Emits when the menu trigger is destroyed. */
+  private readonly _destroyed: Subject<void> = new Subject();
+
   constructor(
     private readonly _elementRef: ElementRef<HTMLElement>,
     protected readonly _viewContainerRef: ViewContainerRef,
     private readonly _overlay: Overlay,
+    private readonly _ngZone: NgZone,
     @Inject(CDK_MENU) private readonly _parentMenu: Menu,
+    @Optional() @Inject(MENU_AIM) private readonly _menuAim?: MenuAim,
     @Optional() private readonly _directionality?: Directionality
-  ) {}
+  ) {
+    this._subscribeToMouseEnter();
+  }
 
   /** Open/close the attached menu if the trigger has been configured with one */
   toggle() {
@@ -142,16 +152,31 @@ export class CdkMenuItemTrigger implements OnDestroy {
   }
 
   /**
-   * If there are existing open menus and this menu is not open, close sibling menus and open
-   * this one.
+   * Subscribe to the mouseenter events and close any sibling menu items if this element is moused
+   * into.
    */
-  _toggleOnMouseEnter() {
-    const menuStack = this._getMenuStack();
-    const isSiblingMenuOpen = !menuStack?.isEmpty() && !this.isMenuOpen();
-    if (isSiblingMenuOpen) {
-      this._closeSiblingTriggers();
-      this.openMenu();
-    }
+  private _subscribeToMouseEnter() {
+    // Closes any sibling menu items and opens the menu associated with this trigger.
+    const toggleMenus = () =>
+      this._ngZone.run(() => {
+        this._closeSiblingTriggers();
+        this.openMenu();
+      });
+
+    this._ngZone.runOutsideAngular(() => {
+      fromEvent(this._elementRef.nativeElement, 'mouseenter')
+        .pipe(
+          filter(() => !this._getMenuStack()?.isEmpty() && !this.isMenuOpen()),
+          takeUntil(this._destroyed)
+        )
+        .subscribe(() => {
+          if (this._menuAim) {
+            this._menuAim.toggle(toggleMenus);
+          } else {
+            toggleMenus();
+          }
+        });
+    });
   }
 
   /**
@@ -287,6 +312,9 @@ export class CdkMenuItemTrigger implements OnDestroy {
   ngOnDestroy() {
     this._destroyOverlay();
     this._resetPanelMenuStack();
+
+    this._destroyed.next();
+    this._destroyed.complete();
   }
 
   /** Set the menu panels menu stack back to null. */
